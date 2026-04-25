@@ -1,0 +1,22 @@
+[project]
+name = "pcb-map-scripts"
+version = "0.1.0"
+description = "Scripts for PCB map device control and setup"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "typer",
+    "paho-mqtt",
+    "zeroconf",
+    "pywifi"
+]
+
+[project.scripts]
+device-setup = "device_setup:app"
+control-server = "control_server:app"
+
+[tool.uv]
+package = true
+
+[tool.setuptools]
+py-modules = ["device_setup", "control_server"]
