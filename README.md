@@ -1,10 +1,7 @@
 
-
-See:
-https://test.mosquitto.org/
-for MQTT auth tests
-
 `pio run -t upload --upload-port pcb-map.local`
+
+`clang-format -style=Google -i firmware/src/*`
 
 `source ~/hivemq_creds.sh`
 

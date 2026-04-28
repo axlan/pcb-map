@@ -1,52 +1,83 @@
 #pragma once
 
-#include <vector>
-#include <memory>
 #include <stdint.h>
 
-class BaseSprite
-{
-public:
-   BaseSprite() {}
-   BaseSprite(int x, int y, unsigned color, unsigned speed = 0) : x_(x), y_(y), color_(color), speed_(speed) {}
-   virtual ~BaseSprite() {}
+#include <memory>
+#include <string>
+#include <vector>
 
-   virtual void Draw(size_t cycles) const = 0;
+#define PANEL_RES_X \
+  64  // Number of pixels wide of each INDIVIDUAL panel module.
+#define PANEL_RES_Y \
+  32  // Number of pixels tall of each INDIVIDUAL panel module.
 
-   int x_ = 0;
-   int y_ = 0;
-   // RGBA each 8-bit
-   uint32_t color_ = 0;
-   unsigned speed_ = 0;
+static constexpr unsigned long MAX_FRAMES_PER_SEC = 24;
+
+static constexpr unsigned long EFFECT_PERIOD_MS = 5000;
+
+typedef uint16_t Color565;
+
+class BaseSprite {
+ public:
+  BaseSprite() {}
+  BaseSprite(const char* name, int x, int y, unsigned color, float speed = 0,
+             unsigned offset_ms = 0)
+      : name_(name),
+        x_(x),
+        y_(y),
+        color_(color),
+        speed_(speed),
+        offset_ms_(offset_ms) {}
+  virtual ~BaseSprite() {}
+
+  virtual void Draw(size_t time_ms) const = 0;
+
+  std::string name_;
+  int x_ = 0;
+  int y_ = 0;
+  Color565 color_ = 0;
+  float speed_ = 1;
+  unsigned offset_ms_ = 0;
 };
 
-class PixelSprite : public BaseSprite
-{
-public:
-   PixelSprite() {}
-   PixelSprite(int x, int y, unsigned color, unsigned end_color = 0, unsigned speed = 0) : BaseSprite(x, y, speed, color), end_color_(end_color) {}
+class PixelSprite : public BaseSprite {
+ public:
+  PixelSprite() {}
+  PixelSprite(const char* name, int x, int y, unsigned color,
+              unsigned end_color = 0, float speed = 1, unsigned offset_ms = 0)
+      : BaseSprite(name, x, y, color, speed, offset_ms),
+        end_color_(end_color) {}
 
-   void Draw(size_t cycles) const override;
+  void Draw(size_t time_ms) const override;
 
-   // RGBA each 8-bit
-   uint32_t end_color_ = 0;
+  Color565 end_color_ = 0;
 };
 
 using SpritePtr = std::unique_ptr<BaseSprite>;
 
-class MatrixSpriteController
-{
-public:
-   static constexpr uint8_t DEFAULT_BRIGHTNESS = 90;
-   void Init();
+class MatrixSpriteController {
+ public:
+  static constexpr uint8_t DEFAULT_BRIGHTNESS = 90;
+  void Init();
 
-   void AddSprite(SpritePtr &sprite);
+  void AddSprite(SpritePtr sprite);
 
-   void Draw();
+  SpritePtr PopSprite(const char* name);
+  SpritePtr PopSprite(const char* name, size_t length);
 
-   void SetBrightness(uint8_t brightness);
+  void Draw();
 
-private:
-   std::vector<SpritePtr> sprites_;
-   uint8_t brightness_ = DEFAULT_BRIGHTNESS;
+  void SetBrightness(uint8_t brightness);
+
+  void DrawBackground(const Color565* background_image);
+  void ClearBackground();
+
+ private:
+  unsigned long last_frame_time_ = 0;
+
+  std::vector<SpritePtr> sprites_;
+  uint8_t brightness_ = DEFAULT_BRIGHTNESS;
+  bool draw_background_ = false;
+  Color565 background_image_[PANEL_RES_X * PANEL_RES_Y];
+  bool beginFrame();
 };

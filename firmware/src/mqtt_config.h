@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <stdint.h>
+
 #include <functional>
 
 static constexpr uint16_t MQTT_UDP_CMD_PORT = 5432;
@@ -27,7 +28,7 @@ struct MQTTConfig {
 using MQTTConfigCallback = std::function<void(const MQTTConfig&)>;
 
 class MQTTConfigManager {
-public:
-    static void Begin(const MQTTConfigCallback& on_change);
-    static void Update();
+ public:
+  static void Begin(const MQTTConfigCallback& on_change);
+  static void Update();
 };
