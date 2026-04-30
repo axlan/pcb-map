@@ -1,15 +1,29 @@
+#!/usr/bin/env -S uv run
 """Device setup script for PCB map"""
 
+from pathlib import Path
+import sys
 import time
 import socket
 import ssl
-from typing import Annotated
 
 import paho.mqtt.client as mqtt
 import typer
+
 from zeroconf import ServiceBrowser, ServiceStateChange, Zeroconf
 
 import pywifi
+
+sys.path.insert(0, str(Path(__file__).parents[1]))
+
+from pcb_map.cli_types import (
+    DEFAULT_BROKER,
+    HostnameOption,
+    PortOption,
+    UseTlsOption,
+    UsernameOption,
+    PasswordOption,
+)
 
 BASE_NAME = "pcb-map"
 MDNS_HOSTNAME = BASE_NAME + ".local"
@@ -18,9 +32,6 @@ MDNS_SERVICE_TYPE = "_mqtt-config._udp.local."
 MQTT_PING_TOPIC = BASE_NAME + "/ping"
 MQTT_PONG_TOPIC = BASE_NAME + "/pong"
 UDP_MQTT_CONFIG_PORT = 5432
-DEFAULT_BROKER = "bee.internal"
-
-
 # State object for common command arguments
 class State:
     verbose: bool = False
@@ -29,28 +40,6 @@ class State:
 state = State()
 
 app = typer.Typer()
-
-HostnameOption = Annotated[
-    str, typer.Option("--hostname", "-h", help="MQTT broker hostname")
-]
-PortOption = Annotated[
-    int,
-    typer.Option(
-        "--port",
-        "-p",
-        help="MQTT broker port. Default based on '--use-tls'",
-        show_default="1883/8883",
-    ),
-]
-UseTlsOption = Annotated[
-    bool, typer.Option("--use-tls", "-t", help="Use TLS for connection")
-]
-UsernameOption = Annotated[
-    str, typer.Option("--username", "-u", help="MQTT broker username")
-]
-PasswordOption = Annotated[
-    str, typer.Option("--password", "-P", help="MQTT broker password")
-]
 
 
 @app.callback()

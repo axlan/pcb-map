@@ -12,11 +12,11 @@ dependencies = [
 ]
 
 [project.scripts]
-device-setup = "device_setup:app"
-control-server = "control_server:app"
+device-setup = "pcb_map.device_setup:app"
+control-server = "pcb_map.control_server:app"
 
 [tool.uv]
 package = true
 
 [tool.setuptools]
-py-modules = ["device_setup", "control_server"]
+packages = ["pcb_map"]
