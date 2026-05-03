@@ -56,6 +56,27 @@ static Color565 Interpolate565(Color565 start, Color565 end, float progress) {
          static_cast<Color565>(b);
 }
 
+// static void DrawTestPattern() {
+//   dma_display_s->fillScreen(0xFFFF);
+//   delay(500);
+//   // fix the screen with green
+//   dma_display_s->fillRect(0, 0, dma_display_s->width(), dma_display_s->height(), dma_display_s->color444(0, 15, 0));
+//   delay(500);
+//   // draw a box in yellow
+//   dma_display_s->drawRect(0, 0, dma_display_s->width(), dma_display_s->height(), dma_display_s->color444(15, 15, 0));
+//   delay(500);
+//   // draw an 'X' in red
+//   dma_display_s->drawLine(0, 0, dma_display_s->width()-1, dma_display_s->height()-1, dma_display_s->color444(15, 0, 0));
+//   dma_display_s->drawLine(dma_display_s->width()-1, 0, 0, dma_display_s->height()-1, dma_display_s->color444(15, 0, 0));
+//   delay(500);
+//   // draw a blue circle
+//   dma_display_s->drawCircle(10, 10, 10, dma_display_s->color444(0, 0, 15));
+//   delay(500);
+//   // fill a violet circle
+//   dma_display_s->fillCircle(40, 21, 10, dma_display_s->color444(15, 0, 15));
+//   delay(500);
+// }
+
 void MatrixSpriteController::Init() {
   // Module configuration
   HUB75_I2S_CFG mxconfig(PANEL_RES_X,  // module width
@@ -169,6 +190,10 @@ SpritePtr MatrixSpriteController::PopSprite(const char* name, size_t length) {
 
 SpritePtr MatrixSpriteController::PopSprite(const char* name) {
   return PopSprite(name, strlen(name));
+}
+
+void MatrixSpriteController::ClearSprites() {
+  sprites_.clear();
 }
 
 void PixelSprite::Draw(size_t time_ms) const {

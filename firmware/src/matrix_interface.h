@@ -4,8 +4,10 @@
 
 #include <stdint.h>
 
+static constexpr const char* MQTT_SET_BRIGHTNESS_TOPIC = "pcb-map/set_brightness";
 static constexpr const char* MQTT_SPRITE_DELETE_TOPIC = "pcb-map/sprite_delete";
 static constexpr const char* MQTT_SPRITE_UPDATE_TOPIC = "pcb-map/sprite_update";
+static constexpr const char* MQTT_SPRITES_CLEAR_TOPIC = "pcb-map/sprites_clear";
 static constexpr const char* MQTT_SET_BACKGROUND_TOPIC =
     "pcb-map/set_background";
 static constexpr const char* MQTT_CLEAR_BACKGROUND_TOPIC =

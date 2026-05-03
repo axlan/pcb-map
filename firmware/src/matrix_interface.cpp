@@ -10,6 +10,32 @@
 
 static const char *TAG = "matrix_interface";
 
+enum class ParseError {
+  OK,
+  NOT_A_NUMBER,
+  OUT_OF_RANGE
+};
+
+ParseError ParsePercent(const std::string& s, float* out) {
+    size_t pos;
+    float val;
+    try {
+        val = std::stof(s, &pos);
+    } catch (const std::invalid_argument&) {
+        return ParseError::NOT_A_NUMBER; // not a number
+    } catch (const std::out_of_range&) {
+        return ParseError::OUT_OF_RANGE; // too large for float
+    }
+
+    if (pos != s.size())
+        return ParseError::NOT_A_NUMBER; // trailing non-numeric characters
+
+    if (val < 0.0f || val > 100.0f)
+        return ParseError::OUT_OF_RANGE; // out of range
+
+    return ParseError::OK;
+}
+
 void MatrixInterface::HandleMQTTMessage(const char *topic, uint8_t *payload,
                                         unsigned int length) {
   if (strcmp(topic, MQTT_SET_BACKGROUND_TOPIC) == 0) {
@@ -95,5 +121,29 @@ void MatrixInterface::HandleMQTTMessage(const char *topic, uint8_t *payload,
     auto name = reinterpret_cast<const char *>(payload);
     ESP_LOGI(TAG, "Clearing sprite '%.*s'", length, name);
     controller_->PopSprite(name, length);
+  } else if (strcmp(topic, MQTT_SET_BRIGHTNESS_TOPIC) == 0) {
+    ESP_LOGI(TAG, "Setting brightness");
+    float brightness = 0;
+    ParseError err = ParsePercent(std::string(reinterpret_cast<const char *>(payload), length), &brightness);
+    if (err == ParseError::OK) {
+      controller_->SetBrightness(brightness * 255.0);
+    } else {
+      ESP_LOGI(TAG, "Brightness not a valid percentage.");
+    }
+  } else if (strcmp(topic, MQTT_SPRITES_CLEAR_TOPIC) == 0)  {
+    ESP_LOGI(TAG, "Clearing sprites");
+    controller_->ClearSprites();
+  }else if (strcmp(topic, MQTT_SET_BACKGROUND_TOPIC) == 0)  {
+    static constexpr size_t EXPECTED_BACKGROUND_SIZE = PANEL_RES_X * PANEL_RES_Y * sizeof(Color565);
+    if (length == EXPECTED_BACKGROUND_SIZE) {
+      ESP_LOGI(TAG, "Setting background image from binary data");
+      controller_->DrawBackground(reinterpret_cast<const Color565 *>(payload));
+    }
+    else {
+      ESP_LOGW(TAG, "Unexpected size for background image. Expected %zu bytes, got %u", EXPECTED_BACKGROUND_SIZE, length);
+    }
+  }else if (strcmp(topic, MQTT_CLEAR_BACKGROUND_TOPIC) == 0)  {
+    ESP_LOGI(TAG, "Clearing background image");
+    controller_->ClearBackground();
   }
 }

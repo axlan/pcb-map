@@ -11,6 +11,17 @@
 #define PANEL_RES_Y \
   32  // Number of pixels tall of each INDIVIDUAL panel module.
 
+/*
+ *        +x (N)
+ *        ^
+ *        |
+ *        |
+ * -y <---+---> +y
+ * (W)    |         (E)
+ *        |
+ *        v
+ *        -x (S)
+ */
 static constexpr unsigned long MAX_FRAMES_PER_SEC = 24;
 
 static constexpr unsigned long EFFECT_PERIOD_MS = 5000;
@@ -64,6 +75,8 @@ class MatrixSpriteController {
 
   SpritePtr PopSprite(const char* name);
   SpritePtr PopSprite(const char* name, size_t length);
+
+  void ClearSprites();
 
   void Draw();
 
