@@ -118,7 +118,7 @@ def send_test_point(
     username: UsernameOption = "",
     password: PasswordOption = ""
 ) -> None:
-    typer.echo("Sending test image")
+    typer.echo("Sending test location marker")
 
     x, y = get_matrix_point_for_lat_long(latitude, longitude)
 

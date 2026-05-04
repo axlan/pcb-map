@@ -10,6 +10,9 @@
 
 static constexpr unsigned long FRAME_INTERVAL = 1000UL / MAX_FRAMES_PER_SEC;
 
+static constexpr unsigned long BACKGROUND_DRAW_INTERVAL = 1000UL;
+
+
 // MatrixPanel_I2S_DMA dma_display_s;
 static MatrixPanel_I2S_DMA* dma_display_s = nullptr;
 
@@ -108,16 +111,26 @@ bool MatrixSpriteController::beginFrame() {
 
 void MatrixSpriteController::Draw() {
   if (!beginFrame()) return;
-  dma_display_s->clearScreen();
+
+  auto now = millis();
+  bool cleared = false;
+  // Drawing the background too often can cause screen flicker.
   if (draw_background_) {
-    dma_display_s->drawRGBBitmap(0, 0, background_image_, PANEL_RES_X,
+    if (now - last_background_draw_time_ > BACKGROUND_DRAW_INTERVAL) {
+      dma_display_s->drawRGBBitmap(0, 0, background_image_, PANEL_RES_X,
                                  PANEL_RES_Y);
+      last_background_draw_time_ = now;
+      cleared = true;
+    }
+  }
+
+  if (!cleared) {
+    dma_display_s->clearScreen();
   }
 
   // Logic for drawing sprites. When multiple sprites occupy the same location,
   // cycle through the one to display.
   // TODO: Only do this if they're the same type?
-  auto now = millis();
   // Make static to reduce dynamic memory churn
   static std::vector<bool> processed;
   static std::vector<size_t> collisions;
