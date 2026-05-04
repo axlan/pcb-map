@@ -159,7 +159,15 @@ void MatrixSpriteController::DrawBackground(const Color565* background_image) {
   draw_background_ = true;
 }
 
-void MatrixSpriteController::ClearBackground() { draw_background_ = false; }
+void MatrixSpriteController::DrawBackgroundRow(uint8_t row,
+                                               const Color565* background_row) {
+  if (row >= PANEL_RES_Y) return;
+  memcpy(&background_image_[row * PANEL_RES_X], background_row, PANEL_ROW_BYTES);
+}
+
+void MatrixSpriteController::SetBackgroundEnabled(bool enabled) {
+  draw_background_ = enabled;
+}
 
 void MatrixSpriteController::AddSprite(SpritePtr sprite) {
   auto it = std::find_if(

@@ -11,6 +11,8 @@
 #define PANEL_RES_Y \
   32  // Number of pixels tall of each INDIVIDUAL panel module.
 
+#define PANEL_ROW_BYTES (sizeof(Color565) * PANEL_RES_X)
+
 /*
  *        +x (N)
  *        ^
@@ -83,7 +85,8 @@ class MatrixSpriteController {
   void SetBrightness(uint8_t brightness);
 
   void DrawBackground(const Color565* background_image);
-  void ClearBackground();
+  void DrawBackgroundRow(uint8_t row, const Color565* background_row);
+  void SetBackgroundEnabled(bool enabled);
 
  private:
   unsigned long last_frame_time_ = 0;

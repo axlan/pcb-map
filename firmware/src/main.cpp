@@ -51,8 +51,9 @@ MQTTClientManager mqtt_manager(MQTT_CLIENT_NAME,
                                {MQTT_CLEAR_WIFI_TOPIC, MQTT_PING_TOPIC,
                                 MQTT_SPRITE_DELETE_TOPIC,
                                 MQTT_SPRITE_UPDATE_TOPIC,
-                                MQTT_SET_BACKGROUND_TOPIC,
-                                MQTT_CLEAR_BACKGROUND_TOPIC},
+                                MQTT_BACKGROUND_SET_ROW_TOPIC,
+                                MQTT_BACKGROUND_SHOW_TOPIC,
+                                MQTT_BACKGROUND_HIDE_TOPIC},
                                HandleMQTTMessage, MQTTConfig{});
 
 MatrixSpriteController sprite_ctrl;
@@ -149,7 +150,7 @@ void setup() {
   current_stats.last_stats_publish_time = millis();
   current_stats.loop_cycle_start_time = millis();
 
-  sprite_ctrl.AddSprite(SpritePtr(new PixelSprite("test",16,16,0xF800)));
+  // sprite_ctrl.AddSprite(SpritePtr(new PixelSprite("test",16,16,0xF800)));
 }
 
 void UpdateStats(float loop_time_ms) {

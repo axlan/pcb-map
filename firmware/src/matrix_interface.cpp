@@ -38,20 +38,7 @@ ParseError ParsePercent(const std::string& s, float* out) {
 
 void MatrixInterface::HandleMQTTMessage(const char *topic, uint8_t *payload,
                                         unsigned int length) {
-  if (strcmp(topic, MQTT_SET_BACKGROUND_TOPIC) == 0) {
-    constexpr size_t expected_size =
-        PANEL_RES_X * PANEL_RES_Y * sizeof(Color565);
-    if (length == expected_size) {
-      ESP_LOGI(TAG, "Setting background image from binary data");
-      controller_->DrawBackground(reinterpret_cast<const Color565 *>(payload));
-    } else {
-      ESP_LOGE(TAG, "Invalid background data size. Expected %zu bytes, got %u",
-               expected_size, length);
-    }
-  } else if (strcmp(topic, MQTT_CLEAR_BACKGROUND_TOPIC) == 0) {
-    ESP_LOGI(TAG, "Clearing background image");
-    controller_->ClearBackground();
-  } else if (strcmp(topic, MQTT_SPRITE_UPDATE_TOPIC) == 0) {
+  if (strcmp(topic, MQTT_SPRITE_UPDATE_TOPIC) == 0) {
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, payload, length);
 
@@ -133,17 +120,27 @@ void MatrixInterface::HandleMQTTMessage(const char *topic, uint8_t *payload,
   } else if (strcmp(topic, MQTT_SPRITES_CLEAR_TOPIC) == 0)  {
     ESP_LOGI(TAG, "Clearing sprites");
     controller_->ClearSprites();
-  }else if (strcmp(topic, MQTT_SET_BACKGROUND_TOPIC) == 0)  {
-    static constexpr size_t EXPECTED_BACKGROUND_SIZE = PANEL_RES_X * PANEL_RES_Y * sizeof(Color565);
-    if (length == EXPECTED_BACKGROUND_SIZE) {
-      ESP_LOGI(TAG, "Setting background image from binary data");
-      controller_->DrawBackground(reinterpret_cast<const Color565 *>(payload));
+  } else if (strcmp(topic, MQTT_BACKGROUND_SET_ROW_TOPIC) == 0)  {
+    static constexpr size_t EXPECTED_MESSAGE_SIZE = PANEL_ROW_BYTES + 1;
+    if (length == EXPECTED_MESSAGE_SIZE) {
+      uint8_t row = payload[0];
+      if (row < PANEL_RES_Y) {
+
+        ESP_LOGI(TAG, "Setting background row %u from binary data", row);
+        controller_->DrawBackgroundRow(row, reinterpret_cast<const Color565 *>(payload+1));
+      }
+      else {
+      ESP_LOGW(TAG, "Background row out of range. Expected 0-%u, got %u", PANEL_RES_Y-1, row);
+      }
     }
     else {
-      ESP_LOGW(TAG, "Unexpected size for background image. Expected %zu bytes, got %u", EXPECTED_BACKGROUND_SIZE, length);
+      ESP_LOGW(TAG, "Unexpected size for background image. Expected %zu bytes, got %u", EXPECTED_MESSAGE_SIZE, length);
     }
-  }else if (strcmp(topic, MQTT_CLEAR_BACKGROUND_TOPIC) == 0)  {
-    ESP_LOGI(TAG, "Clearing background image");
-    controller_->ClearBackground();
+  }else if (strcmp(topic, MQTT_BACKGROUND_HIDE_TOPIC) == 0)  {
+    ESP_LOGI(TAG, "Hide background image");
+    controller_->SetBackgroundEnabled(false);
+  }else if (strcmp(topic, MQTT_BACKGROUND_SHOW_TOPIC) == 0)  {
+    ESP_LOGI(TAG, "Show background image");
+    controller_->SetBackgroundEnabled(true);
   }
 }

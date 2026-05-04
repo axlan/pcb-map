@@ -20,7 +20,8 @@ const int QOS = 1;
 
 std::vector<std::string> topics = {
     MQTT_SPRITE_DELETE_TOPIC, MQTT_SPRITE_UPDATE_TOPIC,
-    MQTT_SET_BACKGROUND_TOPIC, MQTT_CLEAR_BACKGROUND_TOPIC};
+    MQTT_BACKGROUND_SET_ROW_TOPIC, MQTT_BACKGROUND_SHOW_TOPIC,
+    MQTT_BACKGROUND_HIDE_TOPIC};
 
 MatrixSpriteController controller;
 MatrixInterface interface(&controller);
@@ -40,12 +41,11 @@ public:
     void message_arrived(mqtt::const_message_ptr msg) override {
         std::cout << "[message]\n"
               << "  topic:   " << msg->get_topic() << "\n"
-              << "  payload: " << msg->to_string() << "\n"
-              << "  QoS:     " << msg->get_qos() << "\n";
-    auto mutable_payload = reinterpret_cast<uint8_t*>(
-        const_cast<char*>(msg->get_payload().data()));
-    interface.HandleMQTTMessage(msg->get_topic().c_str(), mutable_payload,
-                                msg->get_payload().size());
+              << "  len:     " << msg->get_payload().size() << "\n";
+        auto mutable_payload = reinterpret_cast<uint8_t*>(
+            const_cast<char*>(msg->get_payload().data()));
+        interface.HandleMQTTMessage(msg->get_topic().c_str(), mutable_payload,
+                                    msg->get_payload().size());
     }
 
     void delivery_complete(mqtt::delivery_token_ptr token) override {

@@ -1,10 +1,12 @@
 #!/usr/bin/env -S uv run
 """Control server for PCB map"""
 
+import json
 from pathlib import Path
 import sys
 import time
 import struct
+from typing import Annotated
 
 import typer
 from PIL import Image
@@ -22,14 +24,18 @@ from pcb_map.constants import (
     UsernameOption,
     PasswordOption,
     get_port,
-    MQTT_SET_BACKGROUND_TOPIC,
+    MQTT_BACKGROUND_SHOW_TOPIC,
+    MQTT_BACKGROUND_HIDE_TOPIC,
+    MQTT_BACKGROUND_SET_ROW_TOPIC,
+    MQTT_SPRITE_UPDATE_TOPIC,
+    get_matrix_point_for_lat_long
 )
 
 # State object for common command arguments
 class State:
     verbose: bool = False
 
-TEST_IMAGE_PATH = Path(__file__).parents[2] / 'images/test_image.png'
+TEST_IMAGE_PATH = Path(__file__).parents[2] / 'images/test_image.bmp'
 
 state = State()
 
@@ -71,7 +77,7 @@ def send_test_image(
     rgb565_pixels = bytearray()
     for r, g, b in pixels:
         pixel_565 = rgb_to_rgb565(r, g, b)
-        rgb565_pixels.extend(struct.pack(">H", pixel_565))
+        rgb565_pixels.extend(struct.pack("<H", pixel_565))
 
     """Setup the MQTT broker for the device"""
     port = get_port(port, use_tls)
@@ -84,10 +90,51 @@ def send_test_image(
             client_id="control-server",
         ) as client:
 
-        client.send(rgb565_pixels, MQTT_SET_BACKGROUND_TOPIC)
-    
+        BYTES_PER_ROW = MATRIX_WIDTH * 2
+        for row in range(MATRIX_HEIGHT):
+            start_byte = row * BYTES_PER_ROW
+            client.send(struct.pack("<B", row) +rgb565_pixels[start_byte : start_byte + BYTES_PER_ROW], MQTT_BACKGROUND_SET_ROW_TOPIC)
+        client.send(payload=b'', topic=MQTT_BACKGROUND_SHOW_TOPIC)
 
+@app.command()
+def send_test_point(
+    latitude: Annotated[
+        float,
+        typer.Option(
+            "--latitude",
+            help="latitude to draw on"
+        )
+    ],
+    longitude: Annotated[
+        float,
+        typer.Option(
+            "--longitude",
+            help="longitude to draw on"
+        )
+    ],
+    hostname: HostnameOption = DEFAULT_BROKER,
+    port: PortOption = 0,
+    use_tls: UseTlsOption = False,
+    username: UsernameOption = "",
+    password: PasswordOption = ""
+) -> None:
+    typer.echo("Sending test image")
 
+    x, y = get_matrix_point_for_lat_long(latitude, longitude)
+
+    """Setup the MQTT broker for the device"""
+    port = get_port(port, use_tls)
+    with MQTTClient(
+            host=hostname,
+            port=port,
+            username=username or None,
+            password=password or None,
+            use_tls=use_tls,
+            client_id="control-server",
+        ) as client:
+
+        message_str = json.dumps({"name":"test_loc","x":x,"y":y,"color":rgb_to_rgb565(255, 0, 0)})
+        client.send(payload=message_str, topic=MQTT_SPRITE_UPDATE_TOPIC)
 
 
 if __name__ == "__main__":
