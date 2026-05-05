@@ -4,6 +4,7 @@
 import json
 from pathlib import Path
 import sys
+import time
 import struct
 from typing import Annotated
 
@@ -14,10 +15,13 @@ sys.path.insert(0, str(Path(__file__).parents[1]))
 
 from pcb_map.mqtt_client import MQTTClient
 from pcb_map.route_utils import get_route_coords, quantize_route
+from pcb_map.shared_location_interface import fetch_locations, COOKIES_FILE, get_firefox_location_cookie
 from pcb_map.constants import (
     DEFAULT_BROKER,
     MATRIX_HEIGHT,
     MATRIX_WIDTH,
+    RED,
+    COLORS,
     MQTTHostnameOption,
     MQTTPortOption,
     MQTTUseTlsOption,
@@ -135,7 +139,7 @@ def send_test_point(
             client_id="control-server",
         ) as client:
 
-        message_str = json.dumps({"name":"test_loc","x":x,"y":y,"color":rgb_to_rgb565(255, 0, 0)})
+        message_str = json.dumps({"name":"test_loc","x":x,"y":y,"color":rgb_to_rgb565(*RED)})
         client.send(payload=message_str, topic=MQTT_SPRITE_UPDATE_TOPIC)
 
 @app.command()
@@ -177,8 +181,51 @@ def simulate_route(
         for i, segment in enumerate(segments):
             if segment.distance_miles < ROUTE_TILE_MIN_DISTANCE_MILES:
                 continue
-            message_str = json.dumps({"name":f"segment_{i}","x":segment.row,"y":segment.col,"color":rgb_to_rgb565(255, 0, 0), "offset_ms": i * 150})
+            message_str = json.dumps({"name":f"segment_{i}","x":segment.row,"y":segment.col,"color":rgb_to_rgb565(*RED), "offset_ms": i * 150})
             client.send(payload=message_str, topic=MQTT_SPRITE_UPDATE_TOPIC)
+
+@app.command()
+def display_shared_locations(
+    email: str = "me",
+    mqtt_hostname: MQTTHostnameOption = DEFAULT_BROKER,
+    mqtt_port: MQTTPortOption = 0,
+    mqtt_use_tls: MQTTUseTlsOption = False,
+    mqtt_username: MQTTUsernameOption = "",
+    mqtt_password: MQTTPasswordOption = "",
+) -> None:
+    """Fetch shared Google locations and display them on the matrix."""
+    typer.echo(f"Starting shared location display for {email}...")
+
+    mqtt_port = get_port(mqtt_port, mqtt_use_tls)
+
+    try:
+        with MQTTClient(
+            host=mqtt_hostname,
+            port=mqtt_port,
+            username=mqtt_username or None,
+            password=mqtt_password or None,
+            use_tls=mqtt_use_tls,
+            client_id="control-server-shared-loc",
+        ) as client:
+            get_firefox_location_cookie()
+            while True:
+                people = fetch_locations(COOKIES_FILE, email)
+                for i, person in enumerate(people):
+                    x, y = get_matrix_point_for_lat_long(person.latitude, person.longitude) # type: ignore
+                    color = COLORS[i % len(COLORS)]
+
+                    message = {
+                        "name": person.full_name,
+                        "x": x,
+                        "y": y,
+                        "color": rgb_to_rgb565(*color),
+                    }
+                    client.send(json.dumps(message), MQTT_SPRITE_UPDATE_TOPIC)
+
+                time.sleep(30)
+    except KeyboardInterrupt:
+        typer.echo("\nStopping shared location display.")
+
 
 if __name__ == "__main__":
     app()

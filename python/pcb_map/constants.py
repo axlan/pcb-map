@@ -26,6 +26,18 @@ END_LATITUDE = 37.75305011125813
 END_LONGITUDE = -122.22494771556514
 ROUTE_TILE_MIN_DISTANCE_MILES = 0.05
 
+RED     = (230, 25,  75)
+GREEN   = (60,  180, 75)
+YELLOW  = (255, 225, 25)
+BLUE    = (0,   130, 200)
+ORANGE  = (245, 130, 48)
+PURPLE  = (145, 30,  180)
+CYAN    = (70,  240, 240)
+MAGENTA = (240, 50,  230)
+LIME    = (210, 245, 60)
+TEAL    = (0,   128, 128)
+
+COLORS = [RED, GREEN, YELLOW, BLUE, ORANGE, PURPLE, CYAN, MAGENTA, LIME, TEAL]
 
 MQTTHostnameOption = Annotated[
     str, typer.Option("--mqtt-hostname", "-h", help="MQTT broker hostname", envvar="MQTT_HOSTNAME")

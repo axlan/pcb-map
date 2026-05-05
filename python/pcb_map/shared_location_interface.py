@@ -1,17 +1,26 @@
+from pathlib import Path
 import sqlite3
 import shutil
 import os
 import sys
 import tempfile
 # https://github.com/costastf/locationsharinglib
-from locationsharinglib import Service
+from locationsharinglib import Person, Service
 
 
-COOKIES_FILE_NAME = os.path.join(COOKIES_DIR, "google_cookies.txt")
+sys.path.insert(0, str(Path(__file__).parents[1]))
 
-# ─── STEP 1: FIND FIREFOX PROFILE ─────────────────────────────────────────────
+from pcb_map.constants import (
+    CACHE_DIR,
+)
 
-def find_firefox_profile():
+
+COOKIES_FILE = os.path.join(CACHE_DIR, "google_cookies.txt")
+
+
+# ─── Cookie Loaders ─────────────────────────────────────────────
+
+def _find_firefox_profile():
     if sys.platform == "darwin":
         base = os.path.expanduser("~/Library/Application Support/Firefox/Profiles/")
     elif sys.platform.startswith("linux"):
@@ -36,10 +45,8 @@ def find_firefox_profile():
 
     raise FileNotFoundError(f"No Firefox profiles found in {base}")
 
-# ─── STEP 2: EXPORT GOOGLE COOKIES FROM FIREFOX ───────────────────────────────
-
-def export_google_cookies(output_path):
-    profile = find_firefox_profile()
+def get_firefox_location_cookie():
+    profile = _find_firefox_profile()
     print(f"Using Firefox profile: {profile}")
 
     cookies_db = os.path.join(profile, "cookies.sqlite")
@@ -66,7 +73,8 @@ def export_google_cookies(output_path):
     if not rows:
         raise ValueError("No Google cookies found — are you logged into Google in Firefox?")
 
-    with open(output_path, "w") as f:
+    CACHE_DIR.mkdir(exist_ok=True)
+    with open(COOKIES_FILE, "w") as f:
         f.write("# Netscape HTTP Cookie File\n")
         for host, path, secure, expiry, name, value in rows:
             # Netscape format columns:
@@ -75,44 +83,42 @@ def export_google_cookies(output_path):
             secure_str = "TRUE" if secure else "FALSE"
             f.write(f"{host}\t{include_subdomains}\t{path}\t{secure_str}\t{expiry}\t{name}\t{value}\n")
 
-    print(f"Exported {len(rows)} Google cookies to {output_path}")
-    return output_path
+    print(f"Exported {len(rows)} Google cookies to {COOKIES_FILE}")
 
-# ─── STEP 3: FETCH SHARED LOCATIONS ───────────────────────────────────────────
+# ─── FETCH SHARED LOCATIONS ───────────────────────────────────────────
 
-def fetch_locations(cookies_file, email):
+def fetch_locations(cookies_file, email) -> list[Person]:
     print(f"\nConnecting to Google Location Sharing as {email}...")
     service = Service(cookies_file=cookies_file, authenticating_account=email)
 
     people = list(service.get_all_people())
     if not people:
         print("No one is currently sharing their location with you.")
-        return
-
-    print(f"\nFound {len(people)} people sharing location:\n")
-    for person in people:
-        print(f"  Name:      {person.full_name}")
-        print(f"  Latitude:  {person.latitude}")
-        print(f"  Longitude: {person.longitude}")
-        print(f"  Address:   {person.address}")
-        print(f"  Last seen: {person.datetime}")
-        print()
+        return []
+    
+    return people
 
 # ─── MAIN ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     try:
-        # Create cookies directory if it doesn't exist
-        os.makedirs(COOKIES_DIR, exist_ok=True)
-
         # Only extract cookies if they don't already exist
         if not os.path.exists(COOKIES_FILE):
             print(f"Cookies not found at {COOKIES_FILE}, extracting from Firefox...")
-            export_google_cookies(COOKIES_FILE)
+            get_firefox_location_cookie()
         else:
             print(f"Using existing cookies from {COOKIES_FILE}")
 
-        fetch_locations(COOKIES_FILE, YOUR_EMAIL)
+        people = fetch_locations(COOKIES_FILE, 'me')
+
+        print(f"\nFound {len(people)} people sharing location:\n")
+        for person in people:
+            print(f"  Name:      {person.full_name}")
+            print(f"  Latitude:  {person.latitude}")
+            print(f"  Longitude: {person.longitude}")
+            print(f"  Address:   {person.address}")
+            print(f"  Last seen: {person.datetime}")
+            print()
     except FileNotFoundError as e:
         print(f"[Error] {e}")
     except ValueError as e:
