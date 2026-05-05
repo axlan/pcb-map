@@ -84,6 +84,10 @@ void MatrixInterface::HandleMQTTMessage(const char *topic, uint8_t *payload,
         ESP_LOGE(TAG, "Invalid 'speed' field (must be float)");
         return;
       }
+      if (!doc["offset_ms"].isNull() && !doc["offset_ms"].is<int>()) {
+        ESP_LOGE(TAG, "Invalid 'offset_ms' field (must be int)");
+        return;
+      }
 
       const char *name = doc["name"].as<const char *>();
       Color565 color = static_cast<Color565>(doc["color"].as<int>());
@@ -96,7 +100,7 @@ void MatrixInterface::HandleMQTTMessage(const char *topic, uint8_t *payload,
 
       // When speed is 1.0, sync the occurrence of the end color with the
       // transition between sprites.
-      unsigned offset_ms = EFFECT_PERIOD_MS / (speed * 2.0);
+      unsigned offset_ms = !doc["offset_ms"].isNull() ? doc["offset_ms"].as<int>() : EFFECT_PERIOD_MS / (speed * 2.0);
 
       ESP_LOGI(TAG, "Valid sprite update received: name='%s', x=%d, y=%d", name,
                x, y);

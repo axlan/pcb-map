@@ -177,7 +177,7 @@ def simulate_route(
         for i, segment in enumerate(segments):
             if segment.distance_miles < ROUTE_TILE_MIN_DISTANCE_MILES:
                 continue
-            message_str = json.dumps({"name":f"segment_{i}","x":segment.row,"y":segment.col,"color":rgb_to_rgb565(255, 0, 0)})
+            message_str = json.dumps({"name":f"segment_{i}","x":segment.row,"y":segment.col,"color":rgb_to_rgb565(255, 0, 0), "offset_ms": i * 150})
             client.send(payload=message_str, topic=MQTT_SPRITE_UPDATE_TOPIC)
 
 if __name__ == "__main__":
