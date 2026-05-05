@@ -37,8 +37,6 @@ from pcb_map.constants import (
     ROUTE_TILE_MIN_DISTANCE_MILES,
 )
 
-TEST_IMAGE_PATH = Path(__file__).parents[2] / 'images/test_image.bmp'
-
 # State object for common command arguments
 class State:
     verbose: bool = False
@@ -65,20 +63,32 @@ def main(
     state.verbose = verbose
 
 @app.command()
-def send_test_image(
+def set_background_image(
+    image_file: Annotated[
+        Path,
+        typer.Argument(help="background image to set (32x64)")
+    ],
     mqtt_hostname: MQTTHostnameOption = DEFAULT_BROKER,
     mqtt_port: MQTTPortOption = 0,
     mqtt_use_tls: MQTTUseTlsOption = False,
     mqtt_username: MQTTUsernameOption = "",
     mqtt_password: MQTTPasswordOption = "",
 ) -> None:
-    typer.echo("Sending test image")
+    typer.echo("Sending background image")
+    if not image_file.exists():
+        typer.echo(f"Error: '{image_file}' not found.", err=True)
+        raise typer.Exit(code=1)
 
     """Load an image and return a list of RGB565 pixel values."""
-    img = Image.open(TEST_IMAGE_PATH).convert("RGB")
+    img = Image.open(image_file).convert("RGB")
+
+    if img.height == 64:
+        img = img.transpose(Image.ROTATE_270)
+
     width, height = img.size
-    assert width == MATRIX_WIDTH
-    assert height == MATRIX_HEIGHT
+    if width != MATRIX_WIDTH or height != MATRIX_HEIGHT:
+        typer.echo(f"Error: Image must be {MATRIX_WIDTH}x{MATRIX_HEIGHT}.", err=True)
+        raise typer.Exit(code=1)
 
     pixels = list(img.getdata())
     rgb565_pixels = bytearray()
