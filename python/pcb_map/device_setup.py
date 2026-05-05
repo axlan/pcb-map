@@ -24,11 +24,11 @@ from pcb_map.constants import (
     MQTT_PING_TOPIC,
     MQTT_PONG_TOPIC,
     UDP_MQTT_CONFIG_PORT,
-    HostnameOption,
-    PortOption,
-    UseTlsOption,
-    UsernameOption,
-    PasswordOption,
+    MQTTHostnameOption,
+    MQTTPortOption,
+    MQTTUseTlsOption,
+    MQTTUsernameOption,
+    MQTTPasswordOption,
     get_port,
 )
 
@@ -187,17 +187,19 @@ class WiFiAPFinder:
 
 @app.command()
 def find_devices(
-    hostname: HostnameOption = DEFAULT_BROKER,
-    port: PortOption = 0,
-    use_tls: UseTlsOption = False,
-    username: UsernameOption = "",
-    password: PasswordOption = "",
+    mqtt_hostname: MQTTHostnameOption = DEFAULT_BROKER,
+    mqtt_port: MQTTPortOption = 0,
+    mqtt_use_tls: MQTTUseTlsOption = False,
+    mqtt_username: MQTTUsernameOption = "",
+    mqtt_password: MQTTPasswordOption = "",
 ) -> None:
     """Find if there pcb-map is online and connected"""
-    port = get_port(port, use_tls)
+    mqtt_port = get_port(mqtt_port, mqtt_use_tls)
     mdns_finder = MDNSDeviceFinder()
     if mdns_finder.find_devices():
-        finder = MQTTDeviceFinder(hostname, port, username, password, use_tls)
+        finder = MQTTDeviceFinder(
+            mqtt_hostname, mqtt_port, mqtt_username, mqtt_password, mqtt_use_tls
+        )
         finder.find_device()
     else:
         WiFiAPFinder().find_device()
@@ -205,24 +207,24 @@ def find_devices(
 
 @app.command()
 def setup_mqtt(
-    hostname: HostnameOption = DEFAULT_BROKER,
-    port: PortOption = 0,
-    use_tls: UseTlsOption = False,
-    username: UsernameOption = "",
-    password: PasswordOption = "",
+    mqtt_hostname: MQTTHostnameOption = DEFAULT_BROKER,
+    mqtt_port: MQTTPortOption = 0,
+    mqtt_use_tls: MQTTUseTlsOption = False,
+    mqtt_username: MQTTUsernameOption = "",
+    mqtt_password: MQTTPasswordOption = "",
 ) -> None:
     """Setup the MQTT broker for the device"""
-    port = get_port(port, use_tls)
+    mqtt_port = get_port(mqtt_port, mqtt_use_tls)
 
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         sock.settimeout(2.0)
-        if "," in username or "," in password:
+        if "," in mqtt_username or "," in mqtt_password:
             typer.echo("',' not allowed in username or password")
             return
 
-        use_tls_val = 1 if use_tls else 0
+        use_tls_val = 1 if mqtt_use_tls else 0
 
-        message = f"SET_MQTT {hostname},{port},{use_tls_val},{username},{password}"
+        message = f"SET_MQTT {mqtt_hostname},{mqtt_port},{use_tls_val},{mqtt_username},{mqtt_password}"
         sock.sendto(message.encode(), (MDNS_HOSTNAME, UDP_MQTT_CONFIG_PORT))
 
         data, addr = sock.recvfrom(4096)

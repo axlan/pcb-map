@@ -10,6 +10,8 @@ dependencies = [
     "zeroconf",
     "pywifi",
     "pillow>=12.2.0",
+    "locationsharinglib>=5.0.3",
+    "haversine>=2.9.0",
 ]
 
 [project.scripts]

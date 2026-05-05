@@ -95,6 +95,5 @@ class MatrixSpriteController {
   uint8_t brightness_ = DEFAULT_BRIGHTNESS;
   bool draw_background_ = false;
   Color565 background_image_[PANEL_RES_X * PANEL_RES_Y] = {0};
-  unsigned long last_background_draw_time_ = 0;
   bool beginFrame();
 };

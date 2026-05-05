@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Annotated
 import typer
 
@@ -23,27 +24,30 @@ START_LATITUDE = 37.90735631520354
 START_LONGITUDE = -122.32360276594092
 END_LATITUDE = 37.75305011125813
 END_LONGITUDE = -122.22494771556514
+ROUTE_TILE_MIN_DISTANCE_MILES = 0.05
 
-HostnameOption = Annotated[
-    str, typer.Option("--hostname", "-h", help="MQTT broker hostname")
+
+MQTTHostnameOption = Annotated[
+    str, typer.Option("--mqtt-hostname", "-h", help="MQTT broker hostname", envvar="MQTT_HOSTNAME")
 ]
-PortOption = Annotated[
+MQTTPortOption = Annotated[
     int,
     typer.Option(
-        "--port",
+        "--mqtt-port",
         "-p",
-        help="MQTT broker port. Default based on '--use-tls'",
+        help="MQTT broker port. Default based on '--mqtt-use-tls'",
         show_default="1883/8883",
+        envvar="MQTT_PORT",
     ),
 ]
-UseTlsOption = Annotated[
-    bool, typer.Option("--use-tls", "-t", help="Use TLS for connection")
+MQTTUseTlsOption = Annotated[
+    bool, typer.Option("--mqtt-use-tls", "-t", help="Use TLS for connection", envvar="MQTT_USE_TLS")
 ]
-UsernameOption = Annotated[
-    str, typer.Option("--username", "-u", help="MQTT broker username")
+MQTTUsernameOption = Annotated[
+    str, typer.Option("--mqtt-username", "-u", help="MQTT broker username", envvar="MQTT_USERNAME")
 ]
-PasswordOption = Annotated[
-    str, typer.Option("--password", "-P", help="MQTT broker password")
+MQTTPasswordOption = Annotated[
+    str, typer.Option("--mqtt-password", "-P", help="MQTT broker password", envvar="MQTT_PASSWORD")
 ]
 
 def get_port(port_arg: int, use_tls: bool) -> int:
@@ -51,6 +55,8 @@ def get_port(port_arg: int, use_tls: bool) -> int:
         return 8883 if use_tls else 1883
     else:
         return port_arg
+
+CACHE_DIR = Path(__file__).parents[2] / '.cache'
 
 # y increases from west to east and x increases from south to north
 def get_matrix_point_for_lat_long(latitude: float, longitude: float) -> tuple[int, int]:
