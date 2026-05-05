@@ -20,22 +20,30 @@ import requests
 from haversine import haversine, Unit
 from collections import namedtuple
 
-from pcb_map.constants import (CACHE_DIR, MATRIX_HEIGHT, MATRIX_WIDTH, START_LATITUDE, START_LONGITUDE, END_LATITUDE, END_LONGITUDE)
-
+from pcb_map.constants import (
+    CACHE_DIR,
+    MATRIX_HEIGHT,
+    MATRIX_WIDTH,
+    START_LATITUDE,
+    START_LONGITUDE,
+    END_LATITUDE,
+    END_LONGITUDE,
+)
 
 OPEN_ROUTE_SERVICE_BASE = "https://api.openrouteservice.org"
 
 # ── ORS helpers ───────────────────────────────────────────────────────────────
 
+
 def geocode(address, api_key):
-    r = requests.get(f"{OPEN_ROUTE_SERVICE_BASE}/geocode/search", params={
-        "api_key": api_key,
-        "text": address,
-        "size": 1
-    })
+    r = requests.get(
+        f"{OPEN_ROUTE_SERVICE_BASE}/geocode/search",
+        params={"api_key": api_key, "text": address, "size": 1},
+    )
     r.raise_for_status()
     coords = r.json()["features"][0]["geometry"]["coordinates"]
     return coords  # [longitude, latitude]
+
 
 def get_route(origin_address, dest_address, api_key):
     CACHE_DIR.mkdir(exist_ok=True)
@@ -50,24 +58,24 @@ def get_route(origin_address, dest_address, api_key):
 
     r = requests.post(
         f"{OPEN_ROUTE_SERVICE_BASE}/v2/directions/driving-car/geojson",
-        headers={
-            "Authorization": api_key,
-            "Content-Type": "application/json"
-        },
-        json={
-            "coordinates": [origin, dest]
-        }
+        headers={"Authorization": api_key, "Content-Type": "application/json"},
+        json={"coordinates": [origin, dest]},
     )
     r.raise_for_status()
     data = r.json()
     cache_file.write_text(json.dumps(data))
     return data
 
+
 def get_route_coords(origin_address, dest_address, api_key):
     route_json = get_route(origin_address, dest_address, api_key)
-    return [(lon, lat) for lon, lat in route_json["features"][0]["geometry"]["coordinates"]]
+    return [
+        (lon, lat) for lon, lat in route_json["features"][0]["geometry"]["coordinates"]
+    ]
+
 
 # ── Grid helpers ──────────────────────────────────────────────────────────────
+
 
 def point_to_cell(lon, lat, min_lon, min_lat, cell_w, cell_h, n_cols, n_rows):
     """Return the (col, row) grid index for a point (clamped to valid range)."""
@@ -77,7 +85,9 @@ def point_to_cell(lon, lat, min_lon, min_lat, cell_w, cell_h, n_cols, n_rows):
     row = max(0, min(n_rows - 1, row))
     return col, row
 
+
 # ── Core algorithm ────────────────────────────────────────────────────────────
+
 
 def _crossing_t(v0, v1, boundary):
     """
@@ -91,9 +101,9 @@ def _crossing_t(v0, v1, boundary):
     return t if 0.0 < t < 1.0 else None
 
 
-def segment_crossings(lon0, lat0, lon1, lat1,
-                      min_lon, min_lat, cell_w, cell_h,
-                      n_cols, n_rows) -> list[float]:
+def segment_crossings(
+    lon0, lat0, lon1, lat1, min_lon, min_lat, cell_w, cell_h, n_cols, n_rows
+) -> list[float]:
     """
     Return a sorted list of t-values (0 < t < 1) where the segment
     (lon0,lat0) -> (lon1,lat1) crosses a grid line.
@@ -156,20 +166,22 @@ def quantize_route(coords: list[tuple[float, float]]) -> list[CellDistance]:
         lon0, lat0 = coords[i]
         lon1, lat1 = coords[i + 1]
 
-        ts = segment_crossings(lon0, lat0, lon1, lat1,
-                               min_lon, min_lat, cell_w, cell_h, n_cols, n_rows)
+        ts = segment_crossings(
+            lon0, lat0, lon1, lat1, min_lon, min_lat, cell_w, cell_h, n_cols, n_rows
+        )
 
         # Walk sub-segments defined by [0, t1, t2, ..., 1]
         breakpoints = [0.0] + ts + [1.0]
         for j in range(len(breakpoints) - 1):
             ta, tb = breakpoints[j], breakpoints[j + 1]
-            mid_t  = (ta + tb) / 2.0
+            mid_t = (ta + tb) / 2.0
 
             # Midpoint of sub-segment → determines which cell this piece is in
             mid_lon = lon0 + mid_t * (lon1 - lon0)
             mid_lat = lat0 + mid_t * (lat1 - lat0)
-            col, row = point_to_cell(mid_lon, mid_lat,
-                                     min_lon, min_lat, cell_w, cell_h, n_cols, n_rows)
+            col, row = point_to_cell(
+                mid_lon, mid_lat, min_lon, min_lat, cell_w, cell_h, n_cols, n_rows
+            )
 
             # Start and end points of sub-segment (for haversine distance)
             pa_lon = lon0 + ta * (lon1 - lon0)
@@ -182,11 +194,12 @@ def quantize_route(coords: list[tuple[float, float]]) -> list[CellDistance]:
 
     return result
 
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     ORIGIN = "3000 Telegraph Ave, Berkeley, CA 94705"
-    DEST   = "920 Heinz Ave, Berkeley, CA 94710"
+    DEST = "920 Heinz Ave, Berkeley, CA 94710"
     API_KEY = os.environ.get("OPEN_ROUTE_SERVICE_KEY")
 
     print(f"Fetching route: {ORIGIN}  →  {DEST}")

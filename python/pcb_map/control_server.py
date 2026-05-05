@@ -15,7 +15,11 @@ sys.path.insert(0, str(Path(__file__).parents[1]))
 
 from pcb_map.mqtt_client import MQTTClient
 from pcb_map.route_utils import get_route_coords, quantize_route
-from pcb_map.shared_location_interface import fetch_locations, COOKIES_FILE, get_firefox_location_cookie
+from pcb_map.shared_location_interface import (
+    fetch_locations,
+    COOKIES_FILE,
+    get_firefox_location_cookie,
+)
 from pcb_map.constants import (
     DEFAULT_BROKER,
     MATRIX_HEIGHT,
@@ -37,6 +41,7 @@ from pcb_map.constants import (
     ROUTE_TILE_MIN_DISTANCE_MILES,
 )
 
+
 # State object for common command arguments
 class State:
     verbose: bool = False
@@ -49,9 +54,9 @@ app = typer.Typer()
 
 def rgb_to_rgb565(r: int, g: int, b: int) -> int:
     """Convert 8-bit RGB channels to a 16-bit RGB565 value."""
-    r5 = (r >> 3) & 0x1F   # 5 bits
-    g6 = (g >> 2) & 0x3F   # 6 bits
-    b5 = (b >> 3) & 0x1F   # 5 bits
+    r5 = (r >> 3) & 0x1F  # 5 bits
+    g6 = (g >> 2) & 0x3F  # 6 bits
+    b5 = (b >> 3) & 0x1F  # 5 bits
     return (r5 << 11) | (g6 << 5) | b5
 
 
@@ -62,12 +67,10 @@ def main(
     """My CLI tool."""
     state.verbose = verbose
 
+
 @app.command()
 def set_background_image(
-    image_file: Annotated[
-        Path,
-        typer.Argument(help="background image to set (32x64)")
-    ],
+    image_file: Annotated[Path, typer.Argument(help="background image to set (32x64)")],
     mqtt_hostname: MQTTHostnameOption = DEFAULT_BROKER,
     mqtt_port: MQTTPortOption = 0,
     mqtt_use_tls: MQTTUseTlsOption = False,
@@ -99,41 +102,36 @@ def set_background_image(
     """Setup the MQTT broker for the device"""
     mqtt_port = get_port(mqtt_port, mqtt_use_tls)
     with MQTTClient(
-            host=mqtt_hostname,
-            port=mqtt_port,
-            username=mqtt_username or None,
-            password=mqtt_password or None,
-            use_tls=mqtt_use_tls,
-            client_id="control-server",
-        ) as client:
+        host=mqtt_hostname,
+        port=mqtt_port,
+        username=mqtt_username or None,
+        password=mqtt_password or None,
+        use_tls=mqtt_use_tls,
+        client_id="control-server",
+    ) as client:
 
         BYTES_PER_ROW = MATRIX_WIDTH * 2
         for row in range(MATRIX_HEIGHT):
             start_byte = row * BYTES_PER_ROW
-            client.send(struct.pack("<B", row) +rgb565_pixels[start_byte : start_byte + BYTES_PER_ROW], MQTT_BACKGROUND_SET_ROW_TOPIC)
-        client.send(payload=b'', topic=MQTT_BACKGROUND_SHOW_TOPIC)
+            client.send(
+                struct.pack("<B", row)
+                + rgb565_pixels[start_byte : start_byte + BYTES_PER_ROW],
+                MQTT_BACKGROUND_SET_ROW_TOPIC,
+            )
+        client.send(payload=b"", topic=MQTT_BACKGROUND_SHOW_TOPIC)
+
 
 @app.command()
 def send_test_point(
-    latitude: Annotated[
-        float,
-        typer.Option(
-            "--latitude",
-            help="latitude to draw on"
-        )
-    ],
+    latitude: Annotated[float, typer.Option("--latitude", help="latitude to draw on")],
     longitude: Annotated[
-        float,
-        typer.Option(
-            "--longitude",
-            help="longitude to draw on"
-        )
+        float, typer.Option("--longitude", help="longitude to draw on")
     ],
     mqtt_hostname: MQTTHostnameOption = DEFAULT_BROKER,
     mqtt_port: MQTTPortOption = 0,
     mqtt_use_tls: MQTTUseTlsOption = False,
     mqtt_username: MQTTUsernameOption = "",
-    mqtt_password: MQTTPasswordOption = ""
+    mqtt_password: MQTTPasswordOption = "",
 ) -> None:
     typer.echo("Sending test location marker")
 
@@ -142,33 +140,38 @@ def send_test_point(
     """Setup the MQTT broker for the device"""
     mqtt_port = get_port(mqtt_port, mqtt_use_tls)
     with MQTTClient(
-            host=mqtt_hostname,
-            port=mqtt_port,
-            username=mqtt_username or None,
-            password=mqtt_password or None,
-            use_tls=mqtt_use_tls,
-            client_id="control-server",
-        ) as client:
+        host=mqtt_hostname,
+        port=mqtt_port,
+        username=mqtt_username or None,
+        password=mqtt_password or None,
+        use_tls=mqtt_use_tls,
+        client_id="control-server",
+    ) as client:
 
-        message_str = json.dumps({"name":"test_loc","x":x,"y":y,"color":rgb_to_rgb565(*RED)})
+        message_str = json.dumps(
+            {"name": "test_loc", "x": x, "y": y, "color": rgb_to_rgb565(*RED)}
+        )
         client.send(payload=message_str, topic=MQTT_SPRITE_UPDATE_TOPIC)
+
 
 @app.command()
 def simulate_route(
-    start: Annotated[
-        str, typer.Option("--start", "-s", help="Route start address")
-    ],
-    dest: Annotated[
-        str, typer.Option("--dest", "-d", help="Route end address")
-    ],
+    start: Annotated[str, typer.Option("--start", "-s", help="Route start address")],
+    dest: Annotated[str, typer.Option("--dest", "-d", help="Route end address")],
     open_route_service_key: Annotated[
-        str, typer.Option("--open-route-service-key", "-k", help="Open Route Service API key", envvar="OPEN_ROUTE_SERVICE_KEY")
+        str,
+        typer.Option(
+            "--open-route-service-key",
+            "-k",
+            help="Open Route Service API key",
+            envvar="OPEN_ROUTE_SERVICE_KEY",
+        ),
     ],
     mqtt_hostname: MQTTHostnameOption = DEFAULT_BROKER,
     mqtt_port: MQTTPortOption = 0,
     mqtt_use_tls: MQTTUseTlsOption = False,
     mqtt_username: MQTTUsernameOption = "",
-    mqtt_password: MQTTPasswordOption = ""
+    mqtt_password: MQTTPasswordOption = "",
 ) -> None:
     typer.echo("Getting Route from Open Route Service")
 
@@ -177,27 +180,43 @@ def simulate_route(
 
     segments = quantize_route(coords)
 
-
     """Setup the MQTT broker for the device"""
     mqtt_port = get_port(mqtt_port, mqtt_use_tls)
     with MQTTClient(
-            host=mqtt_hostname,
-            port=mqtt_port,
-            username=mqtt_username or None,
-            password=mqtt_password or None,
-            use_tls=mqtt_use_tls,
-            client_id="control-server",
-        ) as client:
+        host=mqtt_hostname,
+        port=mqtt_port,
+        username=mqtt_username or None,
+        password=mqtt_password or None,
+        use_tls=mqtt_use_tls,
+        client_id="control-server",
+    ) as client:
 
         for i, segment in enumerate(segments):
             if segment.distance_miles < ROUTE_TILE_MIN_DISTANCE_MILES:
                 continue
-            message_str = json.dumps({"name":f"segment_{i}","x":segment.row,"y":segment.col,"color":rgb_to_rgb565(*RED), "offset_ms": i * 150})
+            message_str = json.dumps(
+                {
+                    "name": f"segment_{i}",
+                    "x": segment.row,
+                    "y": segment.col,
+                    "color": rgb_to_rgb565(*RED),
+                    "offset_ms": i * 150,
+                }
+            )
             client.send(payload=message_str, topic=MQTT_SPRITE_UPDATE_TOPIC)
+
 
 @app.command()
 def display_shared_locations(
-    user_colors_file: Annotated[Optional[Path], typer.Option("--user-colors-file", "-c", envvar="USER_COLORS_FILE", help="Path to a JSON file with display preferences (friend_name: [R, G, B])")] = None,
+    user_colors_file: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--user-colors-file",
+            "-c",
+            envvar="USER_COLORS_FILE",
+            help="Path to a JSON file with display preferences (friend_name: [R, G, B])",
+        ),
+    ] = None,
     mqtt_hostname: MQTTHostnameOption = DEFAULT_BROKER,
     mqtt_port: MQTTPortOption = 0,
     mqtt_use_tls: MQTTUseTlsOption = False,
@@ -206,7 +225,7 @@ def display_shared_locations(
 ) -> None:
     """Fetch shared Google locations and display them on the matrix."""
     typer.echo(f"Starting shared location display...")
-    REQUESTOR_NAME='me'
+    REQUESTOR_NAME = "me"
 
     display_config = None
     if user_colors_file:
@@ -217,9 +236,11 @@ def display_shared_locations(
             display_config = json.load(user_colors_file.open())
             typer.echo(f"Loaded display preferences from '{user_colors_file}'.")
         except json.JSONDecodeError as e:
-            typer.echo(f"Error decoding JSON from config file '{user_colors_file}': {e}", err=True)
+            typer.echo(
+                f"Error decoding JSON from config file '{user_colors_file}': {e}",
+                err=True,
+            )
             raise typer.Exit(code=1)
-
 
     mqtt_port = get_port(mqtt_port, mqtt_use_tls)
 
@@ -245,14 +266,14 @@ def display_shared_locations(
                         typer.echo(f"  Last seen: {person.datetime}")
                         typer.echo()
                 for i, person in enumerate(people):
-                    x, y = get_matrix_point_for_lat_long(person.latitude, person.longitude) # type: ignore
-                    
+                    x, y = get_matrix_point_for_lat_long(person.latitude, person.longitude)  # type: ignore
+
                     if display_config:
                         if person.full_name in display_config:
                             color = display_config[person.full_name]
                         else:
                             continue
-                    else:   
+                    else:
                         color = COLORS[i % len(COLORS)]
 
                     message = {

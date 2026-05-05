@@ -88,7 +88,9 @@ class MQTTClient:
             if not self._connect_event.wait(timeout=self._connect_timeout):
                 logger.error(
                     "Connection to %s:%s timed out after %.1fs",
-                    self._host, self._port, self._connect_timeout,
+                    self._host,
+                    self._port,
+                    self._connect_timeout,
                 )
                 self._client.loop_stop()
                 return False
@@ -99,9 +101,13 @@ class MQTTClient:
             logger.error("Failed to connect to %s:%s — %s", self._host, self._port, exc)
             return False
 
-    def send(self, payload: mqtt.PayloadType, topic: str, 
+    def send(
+        self,
+        payload: mqtt.PayloadType,
+        topic: str,
         qos: int = 0,
-        retain: bool = False,) -> bool:
+        retain: bool = False,
+    ) -> bool:
         """
         Publish a message to the broker.
 
@@ -122,13 +128,9 @@ class MQTTClient:
             return False
 
         try:
-            result = self._client.publish(
-                topic, payload, qos=qos, retain=retain
-            )
+            result = self._client.publish(topic, payload, qos=qos, retain=retain)
             if result.rc != mqtt.MQTT_ERR_SUCCESS:
-                logger.error(
-                    "Publish to '%s' failed with code %s", topic, result.rc
-                )
+                logger.error("Publish to '%s' failed with code %s", topic, result.rc)
                 return False
 
             return True
@@ -192,7 +194,8 @@ class MQTTClient:
             self._connected = False
             logger.error(
                 "Connection refused by broker (rc=%s): %s",
-                rc, mqtt.connack_string(rc),
+                rc,
+                mqtt.connack_string(rc),
             )
         self._connect_event.set()
 

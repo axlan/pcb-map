@@ -4,9 +4,9 @@ import shutil
 import os
 import sys
 import tempfile
+
 # https://github.com/costastf/locationsharinglib
 from locationsharinglib import Person, Service
-
 
 sys.path.insert(0, str(Path(__file__).parents[1]))
 
@@ -14,11 +14,11 @@ from pcb_map.constants import (
     CACHE_DIR,
 )
 
-
 COOKIES_FILE = os.path.join(CACHE_DIR, "google_cookies.txt")
 
 
 # ─── Cookie Loaders ─────────────────────────────────────────────
+
 
 def _find_firefox_profile():
     if sys.platform == "darwin":
@@ -44,6 +44,7 @@ def _find_firefox_profile():
         return os.path.join(base, profiles[0])
 
     raise FileNotFoundError(f"No Firefox profiles found in {base}")
+
 
 def get_firefox_location_cookie():
     profile = _find_firefox_profile()
@@ -71,7 +72,9 @@ def get_firefox_location_cookie():
         conn.close()
 
     if not rows:
-        raise ValueError("No Google cookies found — are you logged into Google in Firefox?")
+        raise ValueError(
+            "No Google cookies found — are you logged into Google in Firefox?"
+        )
 
     CACHE_DIR.mkdir(exist_ok=True)
     with open(COOKIES_FILE, "w") as f:
@@ -81,11 +84,15 @@ def get_firefox_location_cookie():
             # domain  include_subdomains  path  secure  expiry  name  value
             include_subdomains = "TRUE" if host.startswith(".") else "FALSE"
             secure_str = "TRUE" if secure else "FALSE"
-            f.write(f"{host}\t{include_subdomains}\t{path}\t{secure_str}\t{expiry}\t{name}\t{value}\n")
+            f.write(
+                f"{host}\t{include_subdomains}\t{path}\t{secure_str}\t{expiry}\t{name}\t{value}\n"
+            )
 
     print(f"Exported {len(rows)} Google cookies to {COOKIES_FILE}")
 
+
 # ─── FETCH SHARED LOCATIONS ───────────────────────────────────────────
+
 
 def fetch_locations(cookies_file, email) -> list[Person]:
     print(f"\nConnecting to Google Location Sharing as {email}...")
@@ -95,8 +102,9 @@ def fetch_locations(cookies_file, email) -> list[Person]:
     if not people:
         print("No one is currently sharing their location with you.")
         return []
-    
+
     return people
+
 
 # ─── MAIN ──────────────────────────────────────────────────────────────────────
 
@@ -109,7 +117,7 @@ if __name__ == "__main__":
         else:
             print(f"Using existing cookies from {COOKIES_FILE}")
 
-        people = fetch_locations(COOKIES_FILE, 'me')
+        people = fetch_locations(COOKIES_FILE, "me")
 
         print(f"\nFound {len(people)} people sharing location:\n")
         for person in people:

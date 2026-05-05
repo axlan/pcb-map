@@ -26,21 +26,24 @@ END_LATITUDE = 37.75305011125813
 END_LONGITUDE = -122.22494771556514
 ROUTE_TILE_MIN_DISTANCE_MILES = 0.05
 
-RED     = (230, 25,  75)
-GREEN   = (60,  180, 75)
-YELLOW  = (255, 225, 25)
-BLUE    = (0,   130, 200)
-ORANGE  = (245, 130, 48)
-PURPLE  = (145, 30,  180)
-CYAN    = (70,  240, 240)
-MAGENTA = (240, 50,  230)
-LIME    = (210, 245, 60)
-TEAL    = (0,   128, 128)
+RED = (230, 25, 75)
+GREEN = (60, 180, 75)
+YELLOW = (255, 225, 25)
+BLUE = (0, 130, 200)
+ORANGE = (245, 130, 48)
+PURPLE = (145, 30, 180)
+CYAN = (70, 240, 240)
+MAGENTA = (240, 50, 230)
+LIME = (210, 245, 60)
+TEAL = (0, 128, 128)
 
 COLORS = [RED, GREEN, YELLOW, BLUE, ORANGE, PURPLE, CYAN, MAGENTA, LIME, TEAL]
 
 MQTTHostnameOption = Annotated[
-    str, typer.Option("--mqtt-hostname", "-h", help="MQTT broker hostname", envvar="MQTT_HOSTNAME")
+    str,
+    typer.Option(
+        "--mqtt-hostname", "-h", help="MQTT broker hostname", envvar="MQTT_HOSTNAME"
+    ),
 ]
 MQTTPortOption = Annotated[
     int,
@@ -53,14 +56,24 @@ MQTTPortOption = Annotated[
     ),
 ]
 MQTTUseTlsOption = Annotated[
-    bool, typer.Option("--mqtt-use-tls", "-t", help="Use TLS for connection", envvar="MQTT_USE_TLS")
+    bool,
+    typer.Option(
+        "--mqtt-use-tls", "-t", help="Use TLS for connection", envvar="MQTT_USE_TLS"
+    ),
 ]
 MQTTUsernameOption = Annotated[
-    str, typer.Option("--mqtt-username", "-u", help="MQTT broker username", envvar="MQTT_USERNAME")
+    str,
+    typer.Option(
+        "--mqtt-username", "-u", help="MQTT broker username", envvar="MQTT_USERNAME"
+    ),
 ]
 MQTTPasswordOption = Annotated[
-    str, typer.Option("--mqtt-password", "-P", help="MQTT broker password", envvar="MQTT_PASSWORD")
+    str,
+    typer.Option(
+        "--mqtt-password", "-P", help="MQTT broker password", envvar="MQTT_PASSWORD"
+    ),
 ]
+
 
 def get_port(port_arg: int, use_tls: bool) -> int:
     if port_arg == 0:
@@ -68,7 +81,9 @@ def get_port(port_arg: int, use_tls: bool) -> int:
     else:
         return port_arg
 
-CACHE_DIR = Path(__file__).parents[2] / '.cache'
+
+CACHE_DIR = Path(__file__).parents[2] / ".cache"
+
 
 # y increases from west to east and x increases from south to north
 def get_matrix_point_for_lat_long(latitude: float, longitude: float) -> tuple[int, int]:

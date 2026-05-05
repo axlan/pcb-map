@@ -32,6 +32,7 @@ from pcb_map.constants import (
     get_port,
 )
 
+
 # State object for common command arguments
 class State:
     verbose: bool = False
