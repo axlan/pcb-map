@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 import time
 import struct
-from typing import Annotated
+from typing import Annotated, Optional
 
 import typer
 from PIL import Image
@@ -20,6 +20,7 @@ from pcb_map.constants import (
     DEFAULT_BROKER,
     MATRIX_HEIGHT,
     MATRIX_WIDTH,
+    MQTT_SPRITES_CLEAR_TOPIC,
     RED,
     COLORS,
     MQTTHostnameOption,
@@ -186,7 +187,7 @@ def simulate_route(
 
 @app.command()
 def display_shared_locations(
-    email: str = "me",
+    user_colors_file: Annotated[Optional[Path], typer.Option("--user-colors-file", "-c", envvar="USER_COLORS_FILE", help="Path to a JSON file with display preferences (friend_name: [R, G, B])")] = None,
     mqtt_hostname: MQTTHostnameOption = DEFAULT_BROKER,
     mqtt_port: MQTTPortOption = 0,
     mqtt_use_tls: MQTTUseTlsOption = False,
@@ -194,7 +195,21 @@ def display_shared_locations(
     mqtt_password: MQTTPasswordOption = "",
 ) -> None:
     """Fetch shared Google locations and display them on the matrix."""
-    typer.echo(f"Starting shared location display for {email}...")
+    typer.echo(f"Starting shared location display...")
+    REQUESTOR_NAME='me'
+
+    display_config = None
+    if user_colors_file:
+        if not user_colors_file.exists():
+            typer.echo(f"Error: Config file '{user_colors_file}' not found.", err=True)
+            raise typer.Exit(code=1)
+        try:
+            display_config = json.load(user_colors_file.open())
+            typer.echo(f"Loaded display preferences from '{user_colors_file}'.")
+        except json.JSONDecodeError as e:
+            typer.echo(f"Error decoding JSON from config file '{user_colors_file}': {e}", err=True)
+            raise typer.Exit(code=1)
+
 
     mqtt_port = get_port(mqtt_port, mqtt_use_tls)
 
@@ -209,10 +224,26 @@ def display_shared_locations(
         ) as client:
             get_firefox_location_cookie()
             while True:
-                people = fetch_locations(COOKIES_FILE, email)
+                people = fetch_locations(COOKIES_FILE, REQUESTOR_NAME)
+                if state.verbose:
+                    typer.echo(f"\nFound {len(people)} people sharing location:\n")
+                    for person in people:
+                        typer.echo(f"  Name:      {person.full_name}")
+                        typer.echo(f"  Latitude:  {person.latitude}")
+                        typer.echo(f"  Longitude: {person.longitude}")
+                        typer.echo(f"  Address:   {person.address}")
+                        typer.echo(f"  Last seen: {person.datetime}")
+                        typer.echo()
                 for i, person in enumerate(people):
                     x, y = get_matrix_point_for_lat_long(person.latitude, person.longitude) # type: ignore
-                    color = COLORS[i % len(COLORS)]
+                    
+                    if display_config:
+                        if person.full_name in display_config:
+                            color = display_config[person.full_name]
+                        else:
+                            continue
+                    else:   
+                        color = COLORS[i % len(COLORS)]
 
                     message = {
                         "name": person.full_name,
@@ -225,6 +256,29 @@ def display_shared_locations(
                 time.sleep(30)
     except KeyboardInterrupt:
         typer.echo("\nStopping shared location display.")
+
+
+@app.command()
+def clear_display(
+    mqtt_hostname: MQTTHostnameOption = DEFAULT_BROKER,
+    mqtt_port: MQTTPortOption = 0,
+    mqtt_use_tls: MQTTUseTlsOption = False,
+    mqtt_username: MQTTUsernameOption = "",
+    mqtt_password: MQTTPasswordOption = "",
+) -> None:
+    """Clear all sprites and hide the background on the matrix."""
+    typer.echo("Clearing display...")
+    mqtt_port = get_port(mqtt_port, mqtt_use_tls)
+    with MQTTClient(
+        host=mqtt_hostname,
+        port=mqtt_port,
+        username=mqtt_username or None,
+        password=mqtt_password or None,
+        use_tls=mqtt_use_tls,
+        client_id="control-server-clear",
+    ) as client:
+        client.send(payload=b"", topic=MQTT_SPRITES_CLEAR_TOPIC)
+        client.send(payload=b"", topic=MQTT_BACKGROUND_HIDE_TOPIC)
 
 
 if __name__ == "__main__":

@@ -264,3 +264,4 @@ fp-info-cache
 *.kicad_prl
 
 .cache/
+user_colors.json
