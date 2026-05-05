@@ -10,7 +10,6 @@
 
 static constexpr unsigned long FRAME_INTERVAL = 1000UL / MAX_FRAMES_PER_SEC;
 
-
 // MatrixPanel_I2S_DMA dma_display_s;
 static MatrixPanel_I2S_DMA* dma_display_s = nullptr;
 
@@ -165,7 +164,8 @@ void MatrixSpriteController::DrawBackground(const Color565* background_image) {
 void MatrixSpriteController::DrawBackgroundRow(uint8_t row,
                                                const Color565* background_row) {
   if (row >= PANEL_RES_Y) return;
-  memcpy(&background_image_[row * PANEL_RES_X], background_row, PANEL_ROW_BYTES);
+  memcpy(&background_image_[row * PANEL_RES_X], background_row,
+         PANEL_ROW_BYTES);
 }
 
 void MatrixSpriteController::SetBackgroundEnabled(bool enabled) {
@@ -203,9 +203,7 @@ SpritePtr MatrixSpriteController::PopSprite(const char* name) {
   return PopSprite(name, strlen(name));
 }
 
-void MatrixSpriteController::ClearSprites() {
-  sprites_.clear();
-}
+void MatrixSpriteController::ClearSprites() { sprites_.clear(); }
 
 void PixelSprite::Draw(size_t time_ms) const {
   time_ms += offset_ms_;

@@ -3,7 +3,7 @@
 #include <SFML/Graphics.hpp>  // Include SFML here for implementation
 #include <iostream>
 
-/* 
+/*
  * y increases from left to right and x increases from bottom to top
  *
  *        +x (N)
@@ -123,9 +123,11 @@ void MatrixPanel_I2S_DMA::drawPixel(int x, int y, uint16_t color) {
 
 void MatrixPanel_I2S_DMA::drawRGBBitmap(int x, int y, const uint16_t* bitmap,
                                         int w, int h) {
-  for (int i = 0; i < h; ++i)
-    for (int j = 0; j < w; ++j)
+  for (int i = 0; i < h; ++i) {
+    for (int j = 0; j < w; ++j) {
       drawPixel(x + j, y + i, bitmap[j + i * w]);
+    }
+  }
   redraw_ = true;
 }
 
