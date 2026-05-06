@@ -21,9 +21,6 @@ from pcb_map.constants import (
     END_LONGITUDE,
 )
 
-from pcb_map.open_route_service import get_route_coords
-
-
 # ── Grid helpers ──────────────────────────────────────────────────────────────
 
 
@@ -151,10 +148,16 @@ if __name__ == "__main__":
     import os
     ORIGIN = "3000 Telegraph Ave, Berkeley, CA 94705"
     DEST = "920 Heinz Ave, Berkeley, CA 94710"
-    API_KEY = os.environ.get("OPEN_ROUTE_SERVICE_KEY")
 
     print(f"Fetching route: {ORIGIN}  →  {DEST}")
-    coords = get_route_coords(ORIGIN, DEST, API_KEY)
+    #from pcb_map.open_route_service import get_route_coords
+    # API_KEY = os.environ.get("OPEN_ROUTE_SERVICE_KEY")
+    # coords = get_route_coords(ORIGIN, DEST, API_KEY)
+
+    from pcb_map.google_maps_route import get_route_coords, get_route_segments
+    API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")
+    segments = get_route_segments(ORIGIN, DEST, mode="driving", api_key=API_KEY)
+    coords = get_route_coords(segments)
     print(f"Route has {len(coords)} coordinate points.\n")
 
     segments = quantize_route(coords)

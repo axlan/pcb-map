@@ -14,7 +14,8 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).parents[1]))
 
 from pcb_map.mqtt_client import MQTTClient
-from pcb_map.route_utils import get_route_coords, quantize_route
+from pcb_map.google_maps_route import get_route_coords, get_route_segments
+from pcb_map.route_utils import quantize_route
 from pcb_map.shared_location_interface import (
     fetch_locations,
     COOKIES_FILE,
@@ -158,13 +159,13 @@ def send_test_point(
 def simulate_route(
     start: Annotated[str, typer.Option("--start", "-s", help="Route start address")],
     dest: Annotated[str, typer.Option("--dest", "-d", help="Route end address")],
-    open_route_service_key: Annotated[
+    google_maps_key: Annotated[
         str,
         typer.Option(
-            "--open-route-service-key",
+            "--google-maps-key",
             "-k",
-            help="Open Route Service API key",
-            envvar="OPEN_ROUTE_SERVICE_KEY",
+            help="Google Maps API key",
+            envvar="GOOGLE_MAPS_API_KEY",
         ),
     ],
     mqtt_hostname: MQTTHostnameOption = DEFAULT_BROKER,
@@ -174,9 +175,11 @@ def simulate_route(
     mqtt_password: MQTTPasswordOption = "",
     pulse_leds: LEDPulseOption = False,
 ) -> None:
-    typer.echo("Getting Route from Open Route Service")
+    typer.echo("Displaying route")
 
-    coords = get_route_coords(start, dest, open_route_service_key)
+    segments = get_route_segments(start, dest, mode="driving", api_key=google_maps_key)
+    coords = get_route_coords(segments)
+
     typer.echo(f"Route has {len(coords)} coordinate points.\n")
 
     segments = quantize_route(coords)

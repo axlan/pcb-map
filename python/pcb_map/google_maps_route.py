@@ -1,5 +1,12 @@
+import hashlib
+import json
+
 import requests
 import polyline  # pip install polyline
+
+from pcb_map.constants import (
+    CACHE_DIR,
+)
 
 def get_route_segments(
     origin: str,
@@ -27,6 +34,13 @@ def get_route_segments(
     valid_modes = {"driving", "walking", "bicycling"}
     if mode not in valid_modes:
         raise ValueError(f"mode must be one of {valid_modes}, got {mode!r}")
+
+    CACHE_DIR.mkdir(exist_ok=True)
+    cache_key = hashlib.md5(f"{origin}:{destination}:{mode}".encode()).hexdigest()
+    cache_file = CACHE_DIR / f"google_route_{cache_key}.json"
+
+    if cache_file.exists():
+        return json.loads(cache_file.read_text())
 
     url = "https://maps.googleapis.com/maps/api/directions/json"
     params = {
@@ -70,6 +84,7 @@ def get_route_segments(
                     }
                 )
 
+    cache_file.write_text(json.dumps(segments))
     return segments
 
 
@@ -77,8 +92,8 @@ def get_route_coords(segments: list[dict]) -> list[tuple[float, float]]:
     if len(segments) == 0:
         return []
     
-    start = [(segments[0]['start_lat'], segments[0]['start_lng'])]
-    return start + [(s['end_lat'], s['end_lng']) for s in segments]
+    start = [(segments[0]['start_lng'], segments[0]['start_lat'])]
+    return start + [(s['end_lng'], s['end_lat']) for s in segments]
 
 
 # ── Example usage ────────────────────────────────────────────────────────────
