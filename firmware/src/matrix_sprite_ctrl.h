@@ -70,7 +70,7 @@ using SpritePtr = std::unique_ptr<BaseSprite>;
 
 class MatrixSpriteController {
  public:
-  static constexpr uint8_t DEFAULT_BRIGHTNESS = 128;
+  static constexpr uint8_t DEFAULT_BRIGHTNESS = 200;
   void Init();
 
   void AddSprite(SpritePtr sprite);

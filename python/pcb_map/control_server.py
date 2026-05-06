@@ -32,8 +32,8 @@ from pcb_map.constants import (
     MQTTUseTlsOption,
     MQTTUsernameOption,
     MQTTPasswordOption,
+    LEDPulseOption,
     get_port,
-
     MQTT_SET_BRIGHTNESS_TOPIC,
     MQTT_BACKGROUND_SHOW_TOPIC,
     MQTT_BACKGROUND_HIDE_TOPIC,
@@ -125,18 +125,16 @@ def set_background_image(
 
 @app.command()
 def send_test_point(
-    latitude: Annotated[float, typer.Option("--latitude", help="latitude to draw on")],
-    longitude: Annotated[
-        float, typer.Option("--longitude", help="longitude to draw on")
-    ],
+    lat_long_str: Annotated[str, typer.Argument(help="Comma separated latitude and longitude in degrees")],
     mqtt_hostname: MQTTHostnameOption = DEFAULT_BROKER,
     mqtt_port: MQTTPortOption = 0,
     mqtt_use_tls: MQTTUseTlsOption = False,
     mqtt_username: MQTTUsernameOption = "",
     mqtt_password: MQTTPasswordOption = "",
+    pulse_leds: LEDPulseOption = False,
 ) -> None:
     typer.echo("Sending test location marker")
-
+    latitude, longitude = map(float, lat_long_str.split(","))
     x, y = get_matrix_point_for_lat_long(latitude, longitude)
 
     """Setup the MQTT broker for the device"""
@@ -149,11 +147,11 @@ def send_test_point(
         use_tls=mqtt_use_tls,
         client_id="control-server",
     ) as client:
+        msg_data = {"name": "test_loc", "x": x, "y": y, "color": rgb_to_rgb565(*RED)}
+        if not pulse_leds:
+            msg_data["end_color"] = msg_data["color"]
 
-        message_str = json.dumps(
-            {"name": "test_loc", "x": x, "y": y, "color": rgb_to_rgb565(*RED)}
-        )
-        client.send(payload=message_str, topic=MQTT_SPRITE_UPDATE_TOPIC)
+        client.send(payload=json.dumps(msg_data), topic=MQTT_SPRITE_UPDATE_TOPIC)
 
 
 @app.command()
@@ -174,6 +172,7 @@ def simulate_route(
     mqtt_use_tls: MQTTUseTlsOption = False,
     mqtt_username: MQTTUsernameOption = "",
     mqtt_password: MQTTPasswordOption = "",
+    pulse_leds: LEDPulseOption = False,
 ) -> None:
     typer.echo("Getting Route from Open Route Service")
 
@@ -196,16 +195,17 @@ def simulate_route(
         for i, segment in enumerate(segments):
             if segment.distance_miles < ROUTE_TILE_MIN_DISTANCE_MILES:
                 continue
-            message_str = json.dumps(
-                {
-                    "name": f"segment_{i}",
-                    "x": segment.row,
-                    "y": segment.col,
-                    "color": rgb_to_rgb565(*RED),
-                    "offset_ms": i * 150,
-                }
-            )
-            client.send(payload=message_str, topic=MQTT_SPRITE_UPDATE_TOPIC)
+            msg_data = {
+                "name": f"segment_{i}",
+                "x": segment.row,
+                "y": segment.col,
+                "color": rgb_to_rgb565(*RED),
+                "offset_ms": i * 150,
+            }
+            if not pulse_leds:
+                msg_data["end_color"] = msg_data["color"]
+
+            client.send(payload=json.dumps(msg_data), topic=MQTT_SPRITE_UPDATE_TOPIC)
 
 
 @app.command()
@@ -224,6 +224,7 @@ def display_shared_locations(
     mqtt_use_tls: MQTTUseTlsOption = False,
     mqtt_username: MQTTUsernameOption = "",
     mqtt_password: MQTTPasswordOption = "",
+    pulse_leds: LEDPulseOption = False,
 ) -> None:
     """Fetch shared Google locations and display them on the matrix."""
     typer.echo(f"Starting shared location display...")
@@ -278,13 +279,16 @@ def display_shared_locations(
                     else:
                         color = COLORS[i % len(COLORS)]
 
-                    message = {
+                    msg_data = {
                         "name": person.full_name,
                         "x": x,
                         "y": y,
                         "color": rgb_to_rgb565(*color),
                     }
-                    client.send(json.dumps(message), MQTT_SPRITE_UPDATE_TOPIC)
+                    if not pulse_leds:
+                        msg_data["end_color"] = msg_data["color"]
+
+                    client.send(json.dumps(msg_data), MQTT_SPRITE_UPDATE_TOPIC)
 
                 time.sleep(30)
     except KeyboardInterrupt:

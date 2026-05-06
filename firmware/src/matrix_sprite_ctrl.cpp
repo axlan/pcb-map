@@ -149,6 +149,7 @@ void MatrixSpriteController::Draw() {
   }
 }
 
+//TODO: Setting brightness after startup doesn't seem to work at all, panel stops displaying.
 void MatrixSpriteController::SetBrightness(uint8_t brightness) {
   brightness_ = brightness;
   if (dma_display_s != nullptr) {

@@ -14,7 +14,7 @@
 #include "matrix_interface.h"
 #include "matrix_sprite_ctrl.h"
 
-const std::string SERVER_ADDRESS = "tcp://bee.internal:1883";
+const std::string SERVER_ADDRESS = "tcp://localhost:1883";
 const std::string CLIENT_ID = "blocking-subscriber";
 const int QOS = 1;
 

@@ -12,6 +12,7 @@ dependencies = [
     "pillow>=12.2.0",
     "locationsharinglib>=5.0.3",
     "haversine>=2.9.0",
+    "polyline>=2.0.4",
 ]
 
 [project.scripts]

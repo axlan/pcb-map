@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Annotated
 import typer
 
-DEFAULT_BROKER = "bee.internal"
+DEFAULT_BROKER = "localhost"
 BASE_NAME = "pcb-map"
 MDNS_HOSTNAME = BASE_NAME + ".local"
 AP_SSID = BASE_NAME + "-ap"
@@ -73,7 +73,12 @@ MQTTPasswordOption = Annotated[
         "--mqtt-password", "-P", help="MQTT broker password", envvar="MQTT_PASSWORD"
     ),
 ]
-
+LEDPulseOption = Annotated[
+    bool,
+    typer.Option(
+        "--pulse-leds", help="Have heartbeats pulse the LEDs", envvar="PULSE_LEDS"
+    ),
+]
 
 def get_port(port_arg: int, use_tls: bool) -> int:
     if port_arg == 0:
