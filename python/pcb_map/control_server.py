@@ -33,6 +33,8 @@ from pcb_map.constants import (
     MQTTUsernameOption,
     MQTTPasswordOption,
     get_port,
+
+    MQTT_SET_BRIGHTNESS_TOPIC,
     MQTT_BACKGROUND_SHOW_TOPIC,
     MQTT_BACKGROUND_HIDE_TOPIC,
     MQTT_BACKGROUND_SET_ROW_TOPIC,
@@ -310,6 +312,34 @@ def clear_display(
     ) as client:
         client.send(payload=b"", topic=MQTT_SPRITES_CLEAR_TOPIC)
         client.send(payload=b"", topic=MQTT_BACKGROUND_HIDE_TOPIC)
+
+
+@app.command()
+def set_brightness(
+    brightness: Annotated[float, typer.Argument(help="Brightness percentage (0-100)")],
+    mqtt_hostname: MQTTHostnameOption = DEFAULT_BROKER,
+    mqtt_port: MQTTPortOption = 0,
+    mqtt_use_tls: MQTTUseTlsOption = False,
+    mqtt_username: MQTTUsernameOption = "",
+    mqtt_password: MQTTPasswordOption = "",
+) -> None:
+    """Set the display brightness (0-100)."""
+    if not (0 <= brightness <= 100):
+        typer.echo("Error: Brightness must be between 0 and 100.", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(f"Setting brightness to {brightness}%...")
+    mqtt_port = get_port(mqtt_port, mqtt_use_tls)
+    with MQTTClient(
+        host=mqtt_hostname,
+        port=mqtt_port,
+        username=mqtt_username or None,
+        password=mqtt_password or None,
+        use_tls=mqtt_use_tls,
+        client_id="control-server-brightness",
+    ) as client:
+        # Send brightness as a string to be parsed by the firmware's ParsePercent
+        client.send(payload=str(brightness), topic=MQTT_SET_BRIGHTNESS_TOPIC)
 
 
 if __name__ == "__main__":
