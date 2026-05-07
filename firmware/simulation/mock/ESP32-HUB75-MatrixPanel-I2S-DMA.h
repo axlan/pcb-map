@@ -19,6 +19,7 @@ struct HUB75_I2S_CFG {
   HUB75_I2S_CFG(int w, int h, int c, i2s_pins p) : width(w), height(h) {}
   int width, height;
   bool clkphase;
+  bool double_buff;
 };
 
 class MatrixPanel_I2S_DMA {
@@ -36,6 +37,8 @@ class MatrixPanel_I2S_DMA {
   void drawPixel(int x, int y, uint16_t color);
 
   void drawRGBBitmap(int x, int y, const uint16_t* bitmap, int w, int h);
+
+  void flipDMABuffer();
 
   static void update();
 

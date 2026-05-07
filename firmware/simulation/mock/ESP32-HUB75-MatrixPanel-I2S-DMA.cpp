@@ -106,6 +106,8 @@ void MatrixPanel_I2S_DMA::setBrightness8(uint8_t b) {
   printf("[MockMatrix] Brightness set to %d\n", b);
 }
 
+void MatrixPanel_I2S_DMA::flipDMABuffer() {}
+
 void MatrixPanel_I2S_DMA::clearScreen() {
   if (!window_) return;
   ledLayer_->clear(sf::Color::Transparent);  // Clear only the LED layer

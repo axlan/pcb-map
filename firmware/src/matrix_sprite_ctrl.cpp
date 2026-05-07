@@ -85,7 +85,7 @@ void MatrixSpriteController::Init() {
                          ,
                          PANEL_PINS);
 
-  // mxconfig.double_buff = true;
+  mxconfig.double_buff = true;
   // mxconfig.min_refresh_rate = 30;
 
   // mxconfig.gpio.e = 18;
@@ -147,6 +147,7 @@ void MatrixSpriteController::Draw() {
     size_t display_idx = (now / EFFECT_PERIOD_MS) % collisions.size();
     sprites_[collisions[display_idx]]->Draw(now);
   }
+  dma_display_s->flipDMABuffer();
 }
 
 //TODO: Setting brightness after startup doesn't seem to work at all, panel stops displaying.

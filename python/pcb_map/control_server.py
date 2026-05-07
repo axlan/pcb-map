@@ -336,7 +336,7 @@ def display_shared_locations(
                             typer.echo()
                     for i, person in enumerate(people):
                         x, y = get_matrix_point_for_lat_long(person.latitude, person.longitude)  # type: ignore
-                        _draw_person(i, person.full_name, x, y)  # type: ignore
+                        _draw_person(person.full_name, x, y)  # type: ignore
 
                     time.sleep(30)
             else:
