@@ -90,7 +90,7 @@ int main() {
         controller.Draw();
         MatrixPanel_I2S_DMA::update();
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(16));  // ~60 FPS
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));  // ~10 FPS
     }
 
     for (const auto& topic : topics) {

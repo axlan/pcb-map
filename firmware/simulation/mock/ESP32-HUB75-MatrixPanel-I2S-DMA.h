@@ -9,6 +9,7 @@ namespace sf {
 class RenderWindow;
 class Texture;
 class Sprite;
+class RenderTexture;
 }  // namespace sf
 
 struct HUB75_I2S_CFG {
@@ -44,5 +45,6 @@ class MatrixPanel_I2S_DMA {
   static sf::RenderWindow* window_;
   static sf::Texture* overlayTexture_;
   static sf::Sprite* overlaySprite_;
+  static sf::RenderTexture* ledLayer_;
   static bool redraw_;
 };

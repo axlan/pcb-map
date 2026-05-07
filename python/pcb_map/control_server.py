@@ -25,9 +25,11 @@ from pcb_map.constants import (
     DEFAULT_BROKER,
     MATRIX_HEIGHT,
     MATRIX_WIDTH,
+    MQTT_SPRITE_DELETE_TOPIC,
     MQTT_SPRITES_CLEAR_TOPIC,
     RED,
     COLORS,
+    YELLOW,
     MQTTHostnameOption,
     MQTTPortOption,
     MQTTUseTlsOption,
@@ -63,12 +65,44 @@ def rgb_to_rgb565(r: int, g: int, b: int) -> int:
     return (r5 << 11) | (g6 << 5) | b5
 
 
+def load_color_config(user_colors_file: Path) -> dict[str, tuple[int, int, int]]:
+    if not user_colors_file.exists():
+        typer.echo(f"Error: Config file '{user_colors_file}' not found.", err=True)
+        raise typer.Exit(code=1)
+    try:
+        user_colors = json.load(user_colors_file.open())
+        typer.echo(f"Loaded display preferences from '{user_colors_file}'.")
+        return user_colors
+    except json.JSONDecodeError as e:
+        typer.echo(
+            f"Error decoding JSON from config file '{user_colors_file}': {e}",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+
 @app.callback()
 def main(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output")
 ):
     """My CLI tool."""
     state.verbose = verbose
+
+
+def send_image_to_panel(image: Image.Image, client: MQTTClient):
+    pixels = list(image.getdata()) # type: ignore
+    rgb565_pixels = bytearray()
+    for r, g, b in pixels:
+        pixel_565 = rgb_to_rgb565(r, g, b)
+        rgb565_pixels.extend(struct.pack("<H", pixel_565))
+    BYTES_PER_ROW = MATRIX_WIDTH * 2
+    for row in range(MATRIX_HEIGHT):
+        start_byte = row * BYTES_PER_ROW
+        client.send(
+            struct.pack("<B", row)
+            + rgb565_pixels[start_byte : start_byte + BYTES_PER_ROW],
+            MQTT_BACKGROUND_SET_ROW_TOPIC,
+        )
 
 
 @app.command()
@@ -89,18 +123,12 @@ def set_background_image(
     img = Image.open(image_file).convert("RGB")
 
     if img.height == 64:
-        img = img.transpose(Image.ROTATE_270)
+        img = img.transpose(Image.ROTATE_270) # type: ignore
 
     width, height = img.size
     if width != MATRIX_WIDTH or height != MATRIX_HEIGHT:
         typer.echo(f"Error: Image must be {MATRIX_WIDTH}x{MATRIX_HEIGHT}.", err=True)
         raise typer.Exit(code=1)
-
-    pixels = list(img.getdata())
-    rgb565_pixels = bytearray()
-    for r, g, b in pixels:
-        pixel_565 = rgb_to_rgb565(r, g, b)
-        rgb565_pixels.extend(struct.pack("<H", pixel_565))
 
     """Setup the MQTT broker for the device"""
     mqtt_port = get_port(mqtt_port, mqtt_use_tls)
@@ -112,21 +140,15 @@ def set_background_image(
         use_tls=mqtt_use_tls,
         client_id="control-server",
     ) as client:
-
-        BYTES_PER_ROW = MATRIX_WIDTH * 2
-        for row in range(MATRIX_HEIGHT):
-            start_byte = row * BYTES_PER_ROW
-            client.send(
-                struct.pack("<B", row)
-                + rgb565_pixels[start_byte : start_byte + BYTES_PER_ROW],
-                MQTT_BACKGROUND_SET_ROW_TOPIC,
-            )
+        send_image_to_panel(img, client)
         client.send(payload=b"", topic=MQTT_BACKGROUND_SHOW_TOPIC)
 
 
 @app.command()
 def send_test_point(
-    lat_long_str: Annotated[str, typer.Argument(help="Comma separated latitude and longitude in degrees")],
+    lat_long_str: Annotated[
+        str, typer.Argument(help="Comma separated latitude and longitude in degrees")
+    ],
     mqtt_hostname: MQTTHostnameOption = DEFAULT_BROKER,
     mqtt_port: MQTTPortOption = 0,
     mqtt_use_tls: MQTTUseTlsOption = False,
@@ -211,6 +233,23 @@ def simulate_route(
             client.send(payload=json.dumps(msg_data), topic=MQTT_SPRITE_UPDATE_TOPIC)
 
 
+class RouteManager:
+    def __init__(self) -> None:
+        self.route_images = {}
+
+    def add_route(self, name: str, points: list[tuple[int,int]], color=YELLOW):
+        img = Image.new("RGBA", (64, 32), color=(0, 0, 0, 0))
+        for point in points:
+            img.putpixel(point, color)
+        self.route_images[name] = img
+
+    def get_image(self) -> Image.Image:
+        combined = Image.new("RGBA", (64, 32), color=(0, 0, 0, 255))
+        for img in self.route_images.values():
+            combined = Image.alpha_composite(combined, img)
+        return combined.convert("RGB")
+
+
 @app.command()
 def display_shared_locations(
     user_colors_file: Annotated[
@@ -220,6 +259,15 @@ def display_shared_locations(
             "-c",
             envvar="USER_COLORS_FILE",
             help="Path to a JSON file with display preferences (friend_name: [R, G, B])",
+        ),
+    ] = None,
+    simulation_file: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--simulation-file",
+            "-s",
+            envvar="SIMULATION_FILE",
+            help="Path to a JSON file with events to simulate.",
         ),
     ] = None,
     mqtt_hostname: MQTTHostnameOption = DEFAULT_BROKER,
@@ -233,20 +281,13 @@ def display_shared_locations(
     typer.echo(f"Starting shared location display...")
     REQUESTOR_NAME = "me"
 
-    display_config = None
+    known_users_only = False
+    display_config: dict[str, tuple[int, int, int]] = {}
     if user_colors_file:
-        if not user_colors_file.exists():
-            typer.echo(f"Error: Config file '{user_colors_file}' not found.", err=True)
-            raise typer.Exit(code=1)
-        try:
-            display_config = json.load(user_colors_file.open())
-            typer.echo(f"Loaded display preferences from '{user_colors_file}'.")
-        except json.JSONDecodeError as e:
-            typer.echo(
-                f"Error decoding JSON from config file '{user_colors_file}': {e}",
-                err=True,
-            )
-            raise typer.Exit(code=1)
+        display_config = load_color_config(user_colors_file)
+        known_users_only = True
+
+    route_manager = RouteManager()
 
     mqtt_port = get_port(mqtt_port, mqtt_use_tls)
 
@@ -259,41 +300,76 @@ def display_shared_locations(
             use_tls=mqtt_use_tls,
             client_id="control-server-shared-loc",
         ) as client:
-            get_firefox_location_cookie()
-            while True:
-                people = fetch_locations(COOKIES_FILE, REQUESTOR_NAME)
-                if state.verbose:
-                    typer.echo(f"\nFound {len(people)} people sharing location:\n")
-                    for person in people:
-                        typer.echo(f"  Name:      {person.full_name}")
-                        typer.echo(f"  Latitude:  {person.latitude}")
-                        typer.echo(f"  Longitude: {person.longitude}")
-                        typer.echo(f"  Address:   {person.address}")
-                        typer.echo(f"  Last seen: {person.datetime}")
-                        typer.echo()
-                for i, person in enumerate(people):
-                    x, y = get_matrix_point_for_lat_long(person.latitude, person.longitude)  # type: ignore
 
-                    if display_config:
-                        if person.full_name in display_config:
-                            color = display_config[person.full_name]
-                        else:
-                            continue
+            def _draw_person(name: str, x: int, y: int):
+                if name not in display_config:
+                    if known_users_only:
+                        return
                     else:
-                        color = COLORS[i % len(COLORS)]
+                        display_config[name] = COLORS[len(display_config) % len(COLORS)]
 
-                    msg_data = {
-                        "name": person.full_name,
-                        "x": x,
-                        "y": y,
-                        "color": rgb_to_rgb565(*color),
-                    }
-                    if not pulse_leds:
-                        msg_data["end_color"] = msg_data["color"]
+                color = display_config[name]
 
-                    client.send(json.dumps(msg_data), MQTT_SPRITE_UPDATE_TOPIC)
+                msg_data = {
+                    "name": name,
+                    "x": x,
+                    "y": y,
+                    "color": rgb_to_rgb565(*color),
+                }
+                if not pulse_leds:
+                    msg_data["end_color"] = msg_data["color"]
 
-                time.sleep(30)
+                client.send(json.dumps(msg_data), MQTT_SPRITE_UPDATE_TOPIC)
+
+            if simulation_file is None:
+                get_firefox_location_cookie()
+                while True:
+                    people = fetch_locations(COOKIES_FILE, REQUESTOR_NAME)
+                    if state.verbose:
+                        typer.echo(f"\nFound {len(people)} people sharing location:\n")
+                        for person in people:
+                            typer.echo(f"  Name:      {person.full_name}")
+                            typer.echo(f"  Latitude:  {person.latitude}")
+                            typer.echo(f"  Longitude: {person.longitude}")
+                            typer.echo(f"  Address:   {person.address}")
+                            typer.echo(f"  Last seen: {person.datetime}")
+                            typer.echo()
+                    for i, person in enumerate(people):
+                        x, y = get_matrix_point_for_lat_long(person.latitude, person.longitude)  # type: ignore
+                        _draw_person(i, person.full_name, x, y)  # type: ignore
+
+                    time.sleep(30)
+            else:
+                with simulation_file.open() as f:
+                    events = json.load(f)
+                now = 0
+                for event in events:
+                    time.sleep(event["time"] - now)
+                    now = event["time"]
+                    if event["type"] == "person":
+                        if "delete" in event:
+                            client.send(payload=event["name"], topic=MQTT_SPRITE_DELETE_TOPIC)
+                            continue
+                        elif "x" in event:
+                            x, y = event["x"], event["y"]
+                        else:
+                            x, y = get_matrix_point_for_lat_long(
+                                event["lat"], event["lng"]
+                            )
+                        _draw_person(event["name"], x, y)
+                    elif event["type"] == "route":
+                        if "delete" in event:
+                            route_manager.route_images.pop(event["name"], None)
+                        else:
+                            route_manager.add_route(event["name"], event["points"])
+
+                        img = route_manager.get_image()
+                        send_image_to_panel(img, client)
+
+                        client.send(payload=b"", topic=MQTT_BACKGROUND_SHOW_TOPIC)
+                    else:
+                        typer.echo(f"Unknown event type: {event['type']}")
+
     except KeyboardInterrupt:
         typer.echo("\nStopping shared location display.")
 
@@ -347,6 +423,25 @@ def set_brightness(
     ) as client:
         # Send brightness as a string to be parsed by the firmware's ParsePercent
         client.send(payload=str(brightness), topic=MQTT_SET_BRIGHTNESS_TOPIC)
+
+@app.command()
+def lat_long_to_xy(
+    lat_long_str: Annotated[
+        str, typer.Argument(help="Comma separated latitude and longitude in degrees")
+    ],
+) -> None:
+    """Print the matrix x and y coordinates for a given latitude and longitude."""
+    try:
+        parts = lat_long_str.split(",")
+        if len(parts) != 2:
+            raise ValueError("Expected two values separated by a comma")
+        latitude, longitude = map(float, parts)
+    except ValueError as e:
+        typer.echo(f"Error: Invalid input '{lat_long_str}'. Please provide 'latitude,longitude'.", err=True)
+        raise typer.Exit(code=1)
+
+    x, y = get_matrix_point_for_lat_long(latitude, longitude)
+    typer.echo(f"X: {x}, Y: {y}")
 
 
 if __name__ == "__main__":

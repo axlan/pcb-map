@@ -1,0 +1,19 @@
+[
+    {"time": 0, "type": "person", "name": "joe", "y": 4, "x": 55},
+    {"time": 0, "type": "person", "name": "sue", "y": 11, "x": 48},
+    {"time": 4, "type": "route", "name": "drive", "points": [[54, 4], [53, 4], [52, 4], [51, 5], [50, 5], [49, 5], [48, 5], [47, 6], [47, 7], [47, 8], [47, 9], [48, 10], [48, 11]]},
+    {"time": 7, "type": "person", "name": "joe", "y": 4, "x": 54},
+    {"time": 9, "type": "person", "name": "joe", "y": 4, "x": 53},
+    {"time": 11, "type": "person", "name": "joe", "y": 4, "x": 52},
+    {"time": 13, "type": "person", "name": "joe", "y": 5, "x": 51},
+    {"time": 15, "type": "person", "name": "joe", "y": 5, "x": 50},
+    {"time": 17, "type": "person", "name": "joe", "y": 5, "x": 49},
+    {"time": 19, "type": "person", "name": "joe", "y": 5, "x": 48},
+    {"time": 21, "type": "person", "name": "joe", "y": 6, "x": 47},
+    {"time": 23, "type": "person", "name": "joe", "y": 7, "x": 47},
+    {"time": 25, "type": "person", "name": "joe", "y": 8, "x": 47},
+    {"time": 27, "type": "person", "name": "joe", "y": 9, "x": 47},
+    {"time": 29, "type": "person", "name": "joe", "y": 10, "x": 48},
+    {"time": 31, "type": "person", "name": "joe", "y": 11, "x": 48},
+    {"time": 33, "type": "route", "name": "drive", "delete": 1}
+]
