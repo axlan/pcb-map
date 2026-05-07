@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 import time
 import socket
+from typing import Annotated
 
 import typer
 
@@ -23,6 +24,7 @@ from pcb_map.constants import (
     MDNS_SERVICE_TYPE,
     MQTT_PING_TOPIC,
     MQTT_PONG_TOPIC,
+    MQTT_CLEAR_WIFI_TOPIC,
     UDP_MQTT_CONFIG_PORT,
     MQTTHostnameOption,
     MQTTPortOption,
@@ -193,11 +195,20 @@ def find_devices(
     mqtt_use_tls: MQTTUseTlsOption = False,
     mqtt_username: MQTTUsernameOption = "",
     mqtt_password: MQTTPasswordOption = "",
+    mqtt_only: Annotated[
+    bool,
+    typer.Option(
+        "--mqtt-only", help="Only check for device over MQTT"
+    )] = False,
 ) -> None:
     """Find if there pcb-map is online and connected"""
-    mqtt_port = get_port(mqtt_port, mqtt_use_tls)
-    mdns_finder = MDNSDeviceFinder()
-    if mdns_finder.find_devices():
+    mdns_found = False
+    if not mqtt_only:
+        mdns_finder = MDNSDeviceFinder()
+        mdns_found = mdns_finder.find_devices()
+
+    if mqtt_only or mdns_found:
+        mqtt_port = get_port(mqtt_port, mqtt_use_tls)
         finder = MQTTDeviceFinder(
             mqtt_hostname, mqtt_port, mqtt_username, mqtt_password, mqtt_use_tls
         )
@@ -230,6 +241,28 @@ def setup_mqtt(
 
         data, addr = sock.recvfrom(4096)
         typer.echo(data.decode())
+
+
+@app.command()
+def clear_wifi_creds(
+    mqtt_hostname: MQTTHostnameOption = DEFAULT_BROKER,
+    mqtt_port: MQTTPortOption = 0,
+    mqtt_use_tls: MQTTUseTlsOption = False,
+    mqtt_username: MQTTUsernameOption = "",
+    mqtt_password: MQTTPasswordOption = "",
+) -> None:
+    """Clear all sprites and hide the background on the matrix."""
+    typer.echo("Clearing display...")
+    mqtt_port = get_port(mqtt_port, mqtt_use_tls)
+    with MQTTClient(
+        host=mqtt_hostname,
+        port=mqtt_port,
+        username=mqtt_username or None,
+        password=mqtt_password or None,
+        use_tls=mqtt_use_tls,
+        client_id="control-server-clear",
+    ) as client:
+        client.send(payload=b"", topic=MQTT_CLEAR_WIFI_TOPIC)
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ MDNS_SERVICE_TYPE = "_mqtt-config._udp.local."
 UDP_MQTT_CONFIG_PORT = 5432
 MQTT_PING_TOPIC = BASE_NAME + "/ping"
 MQTT_PONG_TOPIC = BASE_NAME + "/pong"
+MQTT_CLEAR_WIFI_TOPIC = "pcb-map/clear_wifi"
 MQTT_SET_BRIGHTNESS_TOPIC = BASE_NAME + "/set_brightness"
 MQTT_SPRITE_DELETE_TOPIC = BASE_NAME + "/sprite_delete"
 MQTT_SPRITE_UPDATE_TOPIC = BASE_NAME + "/sprite_update"
