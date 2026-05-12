@@ -71,6 +71,12 @@ uv --directory=python sync
 source python/.venv/bin/activate
 ```
 
+Install shell tab completion for the commands:
+```bash
+control-server --install-completion 
+device-setup --install-completion 
+```
+
 ### Configuration
 Set up your environment variables (usually via a script like `pcb_map_args.sh`):
 ```bash
@@ -85,7 +91,7 @@ export USER_COLORS_FILE="$HOME/user_colors.json"
 ```
 
 #### user_colors.json
-Define specific colors for people when using shared location display:
+Define specific colors for people when using shared location display. When specified, only people in this configuration will be displayed.:
 ```json
 {
     "me": [0, 255, 0],
@@ -100,6 +106,12 @@ Define specific colors for people when using shared location display:
 - `find-devices`: Discovers the board via mDNS, MQTT, or by scanning for the setup AP.
 - `setup-mqtt`: Configures the MQTT broker credentials on the device via a local UDP broadcast.
 - `clear-wifi-creds`: Resets the WiFi settings on the hardware.
+
+Here's a rundown of how device configuration works:
+
+![Configuration state machine](docs/mdns_wifi_state_machine.svg)
+
+The `find-devices` command gives the context for what state the device is in.
 
 #### Control Server (`control-server`)
 - `display-shared-locations`: Fetches shared Google locations and plots them on the matrix.
@@ -122,3 +134,6 @@ clang-format -style=Google -i firmware/src/*
  - Improve fetching Google map creds for location sharing from a remote browser
  - Make location share able to run as a server more robustly
  - Scrape Google calendar for events with locations for drawing routes
+ - Separate MQTT client and config into reusable library
+ - Test issues controlling brightness
+ - Add MQTT errors stat
