@@ -8,7 +8,8 @@ This project is two related parts. First is the PCB map itself. This is a PCB ar
 
 The software is designed to be a fairly flexible controller for a matrix display, and the whole project could easily be used with a map printed on paper instead of a custom PCB.
 
-<video src="docs/demo.mp4" autoplay loop muted playsinline></video>
+<!-- <video src="docs/demo.mp4" autoplay loop muted playsinline></video> -->
+<video src="https://github.com/user-attachments/assets/1058f474-8182-4159-85aa-21de5fce3b74" autoplay loop muted playsinline></video>
 
 See <https://www.robopenguins.com/pcb-map/> for the design process.
 
