@@ -27,6 +27,15 @@ The full design is in `design/map_board.kicad_pcb`, while the schematic for the 
 
 The firmware is located in the `firmware/` directory and is built using PlatformIO.
 
+### Supported Matrix Display
+
+The matrix display that this project was tested with is the:
+[Waveshare RGB Full-Color LED Matrix Panel, 5mm Pitch, 64×32 Pixels](https://www.amazon.com/dp/B0CLV5MHPX)
+
+It worked with the `ESP32 HUB75 LED MATRIX PANEL DMA Display` library out of the box, only needing to modify the `mxconfig.clkphase = false`.
+
+My display was labeled as `P5(2121)-3264-16S-M5` (32x64 1/16 scan) and used the `RUC7258D`, `SM16208SJ`, and `MW245BC` control chips.
+
 ### Building and Uploading
 To upload the firmware to your ESP32, use the provided helper script:
 ```bash
