@@ -118,15 +118,65 @@ void RunWifiManager() {
   // need to keep it around
   WiFiManager wm;
 
-  // Automatically connect using saved credentials,
-  // if connection fails, it starts an access point with the specified name (
-  // "AutoConnectAP"), if empty will auto generate SSID, if password is blank it
-  // will be anonymous AP (wm.autoConnect()) then goes into a blocking loop
-  // awaiting configuration and will return success result
+  MQTTConfig config;
+  MQTTConfigManager::LoadMQTTConfig(&config);
+
+  char port_str[6];
+  snprintf(port_str, sizeof(port_str), "%u", config.port);
+
+  WiFiManagerParameter custom_mqtt_host("host", "MQTT Host", config.host.c_str(),
+                                        64);
+  WiFiManagerParameter custom_mqtt_port("port", "MQTT Port", port_str, 6);
+  WiFiManagerParameter custom_mqtt_user("user", "MQTT User",
+                                        config.user_name.c_str(), 64);
+  WiFiManagerParameter custom_mqtt_pass("pass", "MQTT Password",
+                                        config.password.c_str(), 64);
+  WiFiManagerParameter custom_mqtt_tls("tls", "Use TLS (1/0)",
+                                       config.use_tls ? "1" : "0", 2);
+
+  wm.addParameter(&custom_mqtt_host);
+  wm.addParameter(&custom_mqtt_port);
+  wm.addParameter(&custom_mqtt_user);
+  wm.addParameter(&custom_mqtt_pass);
+  wm.addParameter(&custom_mqtt_tls);
+
+  // Automatically connect using saved credentials. If connection fails, it
+  // starts an access point and enters a blocking loop awaiting configuration.
   bool connected = wm.autoConnect(ADHOC_AP);
+
   if (!connected) {
     ESP_LOGE(TAG, "Failed to connect");
     ESP.restart();
+  }
+
+  bool config_changed = false;
+
+  if (config.host != custom_mqtt_host.getValue()) {
+    config.host = custom_mqtt_host.getValue();
+    config_changed = true;
+  }
+  uint16_t new_port = (uint16_t)atoi(custom_mqtt_port.getValue());
+  if (config.port != new_port) {
+    config.port = new_port;
+    config_changed = true;
+  }
+  if (config.user_name != custom_mqtt_user.getValue()) {
+    config.user_name = custom_mqtt_user.getValue();
+    config_changed = true;
+  }
+  if (config.password != custom_mqtt_pass.getValue()) {
+    config.password = custom_mqtt_pass.getValue();
+    config_changed = true;
+  }
+  bool new_use_tls = (strcmp(custom_mqtt_tls.getValue(), "1") == 0);
+  if (config.use_tls != new_use_tls) {
+    config.use_tls = new_use_tls;
+    config_changed = true;
+  }
+
+  if (config_changed) {
+    ESP_LOGI(TAG, "Updating MQTT Config from WifiManager.");
+    MQTTConfigManager::Set(config);
   }
 }
 

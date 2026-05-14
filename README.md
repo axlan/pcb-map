@@ -21,6 +21,8 @@ The design files can be found in `design/`.
 
 The full design is in `design/map_board.kicad_pcb`, while the schematic for the ESP32 connected the the LED panel was designed in `design/wiring_project/map_lights.kicad_pro`
 
+I came up with this project in response to an offer from [PCBWay](https://www.pcbway.com/) to manufacture a board for free in exchange for writing about the experience. The process of submitting the design files was straightforward, and I especially appreciated that their preview system showed the selected solder mask and surface finish colors. The design was flagged for manual review, and I had to confirm that the strange mostly-artistic board layout was intentional. This was entirely reasonable for a PCB that was deliberately designed to be mostly non-functional.
+
 ---
 
 ## Firmware

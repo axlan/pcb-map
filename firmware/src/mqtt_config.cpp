@@ -43,24 +43,33 @@ class ManagedUDP {
   WiFiUDP& get() { return udp_; }
 };
 
-static MQTTConfig mqtt_config_s;
 static Preferences prefs_s;
 static MQTTConfigCallback on_change_s;
 static ManagedUDP udp_s;
 
-static void LoadMQTTConfig() {
+void MQTTConfigManager::LoadMQTTConfig(MQTTConfig* mqtt_config) {
   prefs_s.begin(MQTT_PREF_NAMESPACE, true);
 
-  mqtt_config_s.host = prefs_s.getString("host", MQTT_DEFAULT_HOST);
+  mqtt_config->host = prefs_s.getString("host", MQTT_DEFAULT_HOST);
 
-  mqtt_config_s.port = (uint16_t)prefs_s.getUInt("port", MQTT_DEFAULT_PORT);
+  mqtt_config->port = (uint16_t)prefs_s.getUInt("port", MQTT_DEFAULT_PORT);
 
-  mqtt_config_s.use_tls = prefs_s.getBool("use_tls", MQTT_DEFAULT_USE_TLS);
+  mqtt_config->use_tls = prefs_s.getBool("use_tls", MQTT_DEFAULT_USE_TLS);
 
-  mqtt_config_s.user_name = prefs_s.getString("user_name", MQTT_DEFAULT_USER);
-  mqtt_config_s.password = prefs_s.getString("password", MQTT_DEFAULT_PASS);
+  mqtt_config->user_name = prefs_s.getString("user_name", MQTT_DEFAULT_USER);
+  mqtt_config->password = prefs_s.getString("password", MQTT_DEFAULT_PASS);
 
   prefs_s.end();
+}
+
+static void SaveMQTTConfig(const MQTTConfig& mqtt_config) {
+  prefs_s.begin(MQTT_PREF_NAMESPACE, false);
+  prefs_s.putString("host", mqtt_config.host.c_str());
+  prefs_s.putUInt("port", mqtt_config.port);
+  prefs_s.putBool("use_tls", mqtt_config.use_tls);
+  prefs_s.putString("user_name", mqtt_config.user_name.c_str());
+  prefs_s.putString("password", mqtt_config.password.c_str());
+  prefs_s.end(); 
 }
 
 static void SendUDPReply(const IPAddress& ip, uint16_t port, const char* msg) {
@@ -132,24 +141,19 @@ void ProcessUDPCommands() {
     }
 
     // Parse and validate tokens
-    mqtt_config_s.host = tokens[0];
-    mqtt_config_s.port = (uint16_t)tokens[1].toInt();
-    mqtt_config_s.use_tls = (tokens[2] == "1");
-    mqtt_config_s.user_name = tokens[3];
-    mqtt_config_s.password = tokens[4];
+    MQTTConfig mqtt_config;
+    mqtt_config.host = tokens[0];
+    mqtt_config.port = (uint16_t)tokens[1].toInt();
+    mqtt_config.use_tls = (tokens[2] == "1");
+    mqtt_config.user_name = tokens[3];
+    mqtt_config.password = tokens[4];
 
     // Save to preferences
-    prefs_s.begin(MQTT_PREF_NAMESPACE, false);
-    prefs_s.putString("host", mqtt_config_s.host.c_str());
-    prefs_s.putUInt("port", mqtt_config_s.port);
-    prefs_s.putBool("use_tls", mqtt_config_s.use_tls);
-    prefs_s.putString("user_name", mqtt_config_s.user_name.c_str());
-    prefs_s.putString("password", mqtt_config_s.password.c_str());
-    prefs_s.end();
+    SaveMQTTConfig(mqtt_config);
 
     // Call callback if registered
     if (on_change_s) {
-      on_change_s(mqtt_config_s);
+      on_change_s(mqtt_config);
     }
 
     SendUDPReply(remoteIp, remotePort, "OK");
@@ -162,12 +166,20 @@ void MQTTConfigManager::Begin(const MQTTConfigCallback& on_change) {
     udp_s.stop();
     return;
   }
-  LoadMQTTConfig();
-  on_change_s(mqtt_config_s);
+  MQTTConfig mqtt_config;
+  LoadMQTTConfig(&mqtt_config);
+  on_change_s(mqtt_config);
   udp_s.begin(MQTT_UDP_CMD_PORT);
   MDNS.addService("mqtt-config", "udp", MQTT_UDP_CMD_PORT);
   ESP_LOGI(TAG, "MQTT Config service registered: mqtt-config._udp.local:%u",
            MQTT_UDP_CMD_PORT);
+}
+
+void MQTTConfigManager::Set(const MQTTConfig& config) {
+  SaveMQTTConfig(config);
+  if (on_change_s) {
+    on_change_s(config);
+  }
 }
 
 void MQTTConfigManager::Update() {

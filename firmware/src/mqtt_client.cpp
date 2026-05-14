@@ -104,7 +104,7 @@ void MQTTClientManager::OnConfigChange(const MQTTConfig& config) {
       config_.use_tls ? &mqtt_client_secure_ : &mqtt_client_insecure_;
 
   // Configure client with new settings
-  mqtt_client_->setServer(config.host.c_str(), config.port);
+  mqtt_client_->setServer(config_.host.c_str(), config_.port);
 
   // Force immediate reconnection attempt
   last_mqtt_attempt_ms_ = 0;

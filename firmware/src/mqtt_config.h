@@ -29,6 +29,8 @@ using MQTTConfigCallback = std::function<void(const MQTTConfig&)>;
 
 class MQTTConfigManager {
  public:
+  static void LoadMQTTConfig(MQTTConfig* mqtt_config);
   static void Begin(const MQTTConfigCallback& on_change);
+  static void Set(const MQTTConfig& config);
   static void Update();
 };
