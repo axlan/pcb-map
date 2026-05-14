@@ -14,9 +14,8 @@ enum class ParseError { OK, NOT_A_NUMBER, OUT_OF_RANGE };
 
 ParseError ParsePercent(const std::string &s, float *out) {
   size_t pos;
-  float val;
   try {
-    val = std::stof(s, &pos);
+    *out = std::stof(s, &pos);
   } catch (const std::invalid_argument &) {
     return ParseError::NOT_A_NUMBER;  // not a number
   } catch (const std::out_of_range &) {
@@ -26,7 +25,7 @@ ParseError ParsePercent(const std::string &s, float *out) {
   if (pos != s.size())
     return ParseError::NOT_A_NUMBER;  // trailing non-numeric characters
 
-  if (val < 0.0f || val > 100.0f)
+  if (*out < 0.0f || *out > 100.0f)
     return ParseError::OUT_OF_RANGE;  // out of range
 
   return ParseError::OK;
@@ -117,7 +116,8 @@ void MatrixInterface::HandleMQTTMessage(const char *topic, uint8_t *payload,
         std::string(reinterpret_cast<const char *>(payload), length),
         &brightness);
     if (err == ParseError::OK) {
-      controller_->SetBrightness(brightness * 255.0);
+      // Add a small epsilon to avoid floating point errors rounding down.
+      controller_->SetBrightness(brightness * 2.55001);
     } else {
       ESP_LOGI(TAG, "Brightness not a valid percentage.");
     }

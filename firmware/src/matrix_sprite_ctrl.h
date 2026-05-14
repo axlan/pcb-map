@@ -13,6 +13,8 @@
 
 #define PANEL_ROW_BYTES (sizeof(Color565) * PANEL_RES_X)
 
+static constexpr const char* SPRITE_PREF_NAMESPACE = "sprite";
+
 /*
  *        +x (N)
  *        ^
@@ -92,7 +94,6 @@ class MatrixSpriteController {
   unsigned long last_frame_time_ = 0;
 
   std::vector<SpritePtr> sprites_;
-  uint8_t brightness_ = DEFAULT_BRIGHTNESS;
   bool draw_background_ = false;
   Color565 background_image_[PANEL_RES_X * PANEL_RES_Y] = {0};
   bool beginFrame();

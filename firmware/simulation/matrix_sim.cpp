@@ -21,7 +21,8 @@ const int QOS = 1;
 std::vector<std::string> topics = {
     MQTT_SPRITE_DELETE_TOPIC,   MQTT_SPRITE_UPDATE_TOPIC,
     MQTT_SPRITES_CLEAR_TOPIC,   MQTT_BACKGROUND_SET_ROW_TOPIC,
-    MQTT_BACKGROUND_SHOW_TOPIC, MQTT_BACKGROUND_HIDE_TOPIC};
+    MQTT_BACKGROUND_SHOW_TOPIC, MQTT_BACKGROUND_HIDE_TOPIC,
+    MQTT_SET_BRIGHTNESS_TOPIC};
 
 MatrixSpriteController controller;
 MatrixInterface interface(&controller);
@@ -42,6 +43,10 @@ public:
         std::cout << "[message]\n"
               << "  topic:   " << msg->get_topic() << "\n"
               << "  len:     " << msg->get_payload().size() << "\n";
+        if (msg->get_payload().size() < 32) {
+            std::cout << "  payload:   " << msg->get_payload() << "\n";
+        }
+
         auto mutable_payload = reinterpret_cast<uint8_t*>(
             const_cast<char*>(msg->get_payload().data()));
         interface.HandleMQTTMessage(msg->get_topic().c_str(), mutable_payload,

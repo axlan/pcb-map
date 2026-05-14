@@ -1,6 +1,6 @@
 # PCB Map Display
 
-This project is two related parts. First is the PCB map itself. This is a PCB art piece that combines a map of the East Bay of California with an LED matrix display. The second part is the software to control the display.
+This project is two related parts. First is the PCB map itself manufactured by [PCBWay](https://www.pcbway.com/). This is a PCB art piece that combines a map of the East Bay of California with an LED matrix display. The second part is the software to control the display.
 
 ![Display front](docs/assembled_front.webp)
 
@@ -144,5 +144,4 @@ clang-format -style=Google -i firmware/src/*
  - Make location share able to run as a server more robustly
  - Scrape Google calendar for events with locations for drawing routes
  - Separate MQTT client and config into reusable library
- - Test issues controlling brightness
  - Add MQTT errors stat

@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
+#include <Preferences.h>
 
 #include <algorithm>
 #include <cstring>
@@ -34,6 +35,8 @@ static MatrixPanel_I2S_DMA* dma_display_s = nullptr;
 static constexpr HUB75_I2S_CFG::i2s_pins PANEL_PINS = {
     R1_PIN, G1_PIN, B1_PIN, R2_PIN, G2_PIN,  B2_PIN, A_PIN,
     B_PIN,  C_PIN,  D_PIN,  E_PIN,  LAT_PIN, OE_PIN, CLK_PIN};
+
+static Preferences prefs_s;
 
 static Color565 Interpolate565(Color565 start, Color565 end, float progress) {
   // Extract 5-bit red (bits 15-11), 6-bit green (bits 10-5), 5-bit blue (bits
@@ -95,7 +98,13 @@ void MatrixSpriteController::Init() {
   // Display Setup
   dma_display_s = new MatrixPanel_I2S_DMA(mxconfig);
   dma_display_s->begin();
-  dma_display_s->setBrightness8(brightness_);  // 0-255
+
+  // Load saved brightness setting.
+  prefs_s.begin(SPRITE_PREF_NAMESPACE, true);
+  uint8_t brightness = (uint8_t)prefs_s.getUInt("brightness", DEFAULT_BRIGHTNESS);
+  prefs_s.end();
+
+  dma_display_s->setBrightness8(brightness); 
   dma_display_s->clearScreen();
 }
 
@@ -151,11 +160,15 @@ void MatrixSpriteController::Draw() {
 }
 
 //TODO: Setting brightness after startup doesn't seem to work at all, panel stops displaying.
-void MatrixSpriteController::SetBrightness(uint8_t brightness) {
-  brightness_ = brightness;
+void MatrixSpriteController::SetBrightness(uint8_t brightness) {\
   if (dma_display_s != nullptr) {
-    dma_display_s->setBrightness8(brightness_);
+    dma_display_s->setBrightness8(brightness);
   }
+
+  // Save setting for next boot.
+  prefs_s.begin(SPRITE_PREF_NAMESPACE);
+  prefs_s.putUInt("brightness", brightness);
+  prefs_s.end();
 }
 
 void MatrixSpriteController::DrawBackground(const Color565* background_image) {
