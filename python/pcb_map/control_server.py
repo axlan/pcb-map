@@ -10,17 +10,14 @@ from typing import Annotated, Optional
 
 import typer
 from PIL import Image
+from locationsharinglib import Service, InvalidCookies
 
 sys.path.insert(0, str(Path(__file__).parents[1]))
 
 from pcb_map.mqtt_client import MQTTClient
 from pcb_map.google_maps_route import get_route_coords, get_route_segments
 from pcb_map.route_utils import quantize_route
-from pcb_map.shared_location_interface import (
-    fetch_locations,
-    COOKIES_FILE,
-    get_firefox_location_cookie,
-)
+
 from pcb_map.constants import (
     DEFAULT_BROKER,
     MATRIX_HEIGHT,
@@ -46,6 +43,7 @@ from pcb_map.constants import (
     ROUTE_TILE_MIN_DISTANCE_MILES,
 )
 
+COOKIE_IMAGE = Path(__file__).parents[2] / 'example_data/cookie.bmp'
 
 # State object for common command arguments
 class State:
@@ -56,6 +54,8 @@ state = State()
 
 app = typer.Typer()
 
+def get_cookie_hash(cookie_file: Path) -> int:
+    return hash(cookie_file.read_text())
 
 def rgb_to_rgb565(r: int, g: int, b: int) -> int:
     """Convert 8-bit RGB channels to a 16-bit RGB565 value."""
@@ -90,6 +90,9 @@ def main(
 
 
 def send_image_to_panel(image: Image.Image, client: MQTTClient):
+    if image.height == 64:
+        image = image.transpose(Image.ROTATE_270) # type: ignore
+
     pixels = list(image.getdata()) # type: ignore
     rgb565_pixels = bytearray()
     for r, g, b in pixels:
@@ -122,11 +125,8 @@ def set_background_image(
     """Load an image and return a list of RGB565 pixel values."""
     img = Image.open(image_file).convert("RGB")
 
-    if img.height == 64:
-        img = img.transpose(Image.ROTATE_270) # type: ignore
-
     width, height = img.size
-    if width != MATRIX_WIDTH or height != MATRIX_HEIGHT:
+    if not (width == MATRIX_WIDTH and height == MATRIX_HEIGHT) and not (width == MATRIX_HEIGHT and height == MATRIX_WIDTH):
         typer.echo(f"Error: Image must be {MATRIX_WIDTH}x{MATRIX_HEIGHT}.", err=True)
         raise typer.Exit(code=1)
 
@@ -256,7 +256,7 @@ def display_shared_locations(
         Optional[Path],
         typer.Option(
             "--user-colors-file",
-            "-c",
+            "-f",
             envvar="USER_COLORS_FILE",
             help="Path to a JSON file with display preferences (friend_name: [R, G, B])",
         ),
@@ -270,6 +270,15 @@ def display_shared_locations(
             help="Path to a JSON file with events to simulate.",
         ),
     ] = None,
+    cookie_file: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--cookie-file",
+            "-c",
+            envvar="COOKIE_FILE",
+            help="Path to a netscape formatted cookie file with maps.google.com credentials.",
+        ),
+    ] = None,
     mqtt_hostname: MQTTHostnameOption = DEFAULT_BROKER,
     mqtt_port: MQTTPortOption = 0,
     mqtt_use_tls: MQTTUseTlsOption = False,
@@ -280,6 +289,11 @@ def display_shared_locations(
     """Fetch shared Google locations and display them on the matrix."""
     typer.echo(f"Starting shared location display...")
     REQUESTOR_NAME = "me"
+
+    if cookie_file and simulation_file:
+        raise typer.BadParameter("--simulation-file and --cookie-file are mutually exclusive.")
+    if not cookie_file and not simulation_file:
+        raise typer.BadParameter("One of --cookie-file or --simulation-file is required.")
 
     known_users_only = False
     display_config: dict[str, tuple[int, int, int]] = {}
@@ -321,25 +335,42 @@ def display_shared_locations(
 
                 client.send(json.dumps(msg_data), MQTT_SPRITE_UPDATE_TOPIC)
 
-            if simulation_file is None:
-                get_firefox_location_cookie()
+            if cookie_file is not None:
                 while True:
-                    people = fetch_locations(COOKIES_FILE, REQUESTOR_NAME)
-                    if state.verbose:
-                        typer.echo(f"\nFound {len(people)} people sharing location:\n")
-                        for person in people:
-                            typer.echo(f"  Name:      {person.full_name}")
-                            typer.echo(f"  Latitude:  {person.latitude}")
-                            typer.echo(f"  Longitude: {person.longitude}")
-                            typer.echo(f"  Address:   {person.address}")
-                            typer.echo(f"  Last seen: {person.datetime}")
-                            typer.echo()
-                    for i, person in enumerate(people):
-                        x, y = get_matrix_point_for_lat_long(person.latitude, person.longitude)  # type: ignore
-                        _draw_person(person.full_name, x, y)  # type: ignore
+                    if not cookie_file.exists():
+                        typer.echo(f"Error: Cookie file not found: {cookie_file}", err=True)
+                        raise typer.Exit(code=1)
 
-                    time.sleep(30)
-            else:
+                    cookie_hash = 0
+                    try:
+                        typer.echo(f"Starting location sharing..")
+                        cookie_hash = get_cookie_hash(cookie_file)
+                        service = Service(cookies_file=cookie_file, authenticating_account=REQUESTOR_NAME)
+                        while True:
+                            people = list(service.get_all_people())
+                            if state.verbose:
+                                typer.echo(f"\nFound {len(people)} people sharing location:\n")
+                                for person in people:
+                                    typer.echo(f"  Name:      {person.full_name}")
+                                    typer.echo(f"  Latitude:  {person.latitude}")
+                                    typer.echo(f"  Longitude: {person.longitude}")
+                                    typer.echo(f"  Address:   {person.address}")
+                                    typer.echo(f"  Last seen: {person.datetime}")
+                                    typer.echo()
+                            for i, person in enumerate(people):
+                                x, y = get_matrix_point_for_lat_long(person.latitude, person.longitude)  # type: ignore
+                                _draw_person(person.full_name, x, y)  # type: ignore
+
+                            time.sleep(30)
+                    except InvalidCookies:
+                        typer.echo(f"Cookie file {cookie_file} invalid. Update to resume sharing location.", err=True)
+                        img = Image.open(COOKIE_IMAGE).convert("RGB")
+                        send_image_to_panel(img, client)
+                        while cookie_hash == get_cookie_hash(cookie_file):
+                            time.sleep(10)
+                        client.send(payload=b"", topic=MQTT_BACKGROUND_HIDE_TOPIC)
+                        
+            elif simulation_file is not None:
                 with simulation_file.open() as f:
                     events = json.load(f)
                 now = 0
