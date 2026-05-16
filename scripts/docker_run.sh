@@ -9,4 +9,4 @@ cd "$SCRIPT_DIR/.."
 
 docker build -t pcb_map .
 docker rm pcb_map_locations
-docker run -d --restart=always --env-file $ENV_PATH -v "$CACHE_DIR:/app/.cache" --name pcb_map_locations pcb_map
+docker run -d --restart=always --env-file $ENV_PATH -v "$CACHE_DIR:/app/.cache" --add-host=host.docker.internal:host-gateway --name pcb_map_locations pcb_map
